@@ -379,8 +379,9 @@ namespace HabboBadgeCreator
 
         string DiscordStateText()
         {
-            if (!settings.DiscordEnabled || settings.DiscordAppId.Trim().Length == 0)
-                return L.T("Off", "Aus");
+            if (!settings.DiscordEnabled) return L.T("Off", "Aus");
+            if (DiscordRpc.ResolveAppId(settings.DiscordAppId).Length == 0)
+                return L.T("No application ID in this build", "Keine Application-ID in diesem Build");
             switch (DiscordRpc.Status)
             {
                 case "connected": return L.T("Connected", "Verbunden");
@@ -746,18 +747,19 @@ namespace HabboBadgeCreator
         // ------------------------------------------------------------- behaviour
         void RefreshDoc()
         {
-            tUndo.Invalidate();
-            tRedo.Invalidate();
-            if (layersPanel != null) layersPanel.Invalidate();
-
-            // Performance mode: while a stroke is running the canvas repaints only the cells
-            // it touched and the large preview is batched, so mouse moves stay cheap.
+            // Performance mode: while a stroke runs only the touched cells repaint. The
+            // toolbar, layer panel and preview wait for EndStroke instead of being redrawn
+            // for every mouse move, which is what made the mode feel barely different.
             if (settings.PerfMode && doc.InStroke)
             {
                 previewStale = true;
                 if (!strokeTimer.Enabled) strokeTimer.Start();
                 return;
             }
+
+            tUndo.Invalidate();
+            tRedo.Invalidate();
+            if (layersPanel != null) layersPanel.Invalidate();
 
             previewStale = false;
             strokeTimer.Stop();
@@ -1008,8 +1010,9 @@ namespace HabboBadgeCreator
 
         void ApplyDiscordSettings()
         {
-            if (settings.DiscordEnabled && settings.DiscordAppId.Trim().Length > 0)
-                DiscordRpc.Start(settings.DiscordAppId.Trim(), settings.DiscordImageKey);
+            string id = DiscordRpc.ResolveAppId(settings.DiscordAppId);
+            if (settings.DiscordEnabled && id.Length > 0)
+                DiscordRpc.Start(id, settings.DiscordImageKey);
             else
                 DiscordRpc.Stop();
             UpdateDiscordActivity();
@@ -1021,7 +1024,7 @@ namespace HabboBadgeCreator
         {
             if (settingsChip == null) return;
             int s = 0;
-            if (settings.DiscordEnabled && settings.DiscordAppId.Trim().Length > 0)
+            if (settings.DiscordEnabled && DiscordRpc.ResolveAppId(settings.DiscordAppId).Length > 0)
             {
                 switch (DiscordRpc.Status)
                 {

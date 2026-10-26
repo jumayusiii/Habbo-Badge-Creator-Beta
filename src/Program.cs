@@ -521,6 +521,81 @@ namespace HabboBadgeCreator
                         Check("perf mode draws the artwork over the cached board",
                             mid == unchecked((int)0xFF00A0FF) && corner == unchecked((int)0xFFFF0000));
                     }
+                    // the live-stroke fast path must land on exactly the same pixels
+                    cv.DebugDrawing(true);
+                    using (Bitmap live = new Bitmap(440, 440))
+                    {
+                        cv.DrawToBitmap(live, new Rectangle(0, 0, 440, 440));
+                        Rectangle cr = new Rectangle(20, 20, 400, 400);
+                        int lmid = live.GetPixel(cr.X + 5 * 10 + 5, cr.Y + 5 * 10 + 5).ToArgb();
+                        int lcorner = live.GetPixel(cr.X + 5, cr.Y + 5).ToArgb();
+                        Check("perf mode draws a live stroke from the composite",
+                            lmid == unchecked((int)0xFF00A0FF) && lcorner == unchecked((int)0xFFFF0000));
+                    }
+                    cv.DebugDrawing(false);
+                    // the cached board and overlay must land on exactly the same pixels
+                    cv.Zoom = 12;
+                    cv.ShowGrid = true;
+                    cv.Guides = 1;
+                    using (Bitmap plain = new Bitmap(440, 440))
+                    using (Bitmap fast = new Bitmap(440, 440))
+                    {
+                        cv.PerfMode = false;
+                        cv.DrawToBitmap(plain, new Rectangle(0, 0, 440, 440));
+                        cv.PerfMode = true;
+                        cv.DrawToBitmap(fast, new Rectangle(0, 0, 440, 440));
+                        int diffs = 0;
+                        for (int y = 0; y < 440; y++)
+                            for (int x = 0; x < 440; x++)
+                            {
+                                Color a = plain.GetPixel(x, y), b = fast.GetPixel(x, y);
+                                // compositing the cached grid can round a channel by one shade
+                                if (a.A != b.A || Math.Abs(a.R - b.R) > 1 ||
+                                    Math.Abs(a.G - b.G) > 1 || Math.Abs(a.B - b.B) > 1) diffs++;
+                            }
+                        Check("perf mode matches the normal render" + (diffs == 0 ? "" : " (" + diffs + " pixels differ)"), diffs == 0);
+                    }
+
+                    // a patched stroke must land on the same pixels and must not rebuild the
+                    // cached canvas: that rebuild was the cost of every mouse move before
+                    cv.PerfMode = true;
+                    cv.Zoom = 10;
+                    cv.ShowGrid = true;
+                    cv.Guides = 0;
+                    PixelDoc patchDoc = new PixelDoc();
+                    patchDoc.Set(5, 5, unchecked((int)0xFF00A0FF));
+                    cv.Doc = patchDoc;
+                    using (Bitmap warm = new Bitmap(440, 440))
+                    {
+                        cv.DrawToBitmap(warm, new Rectangle(0, 0, 440, 440));
+                        int builds = cv.SurfaceBuilds;
+                        for (int i = 0; i < 6; i++)
+                        {
+                            cv.DebugPaintPixel(6 + i, 5, unchecked((int)0xFFFF8800));
+                            cv.DrawToBitmap(warm, new Rectangle(0, 0, 440, 440));
+                        }
+                        Check("perf patch does not rebuild the canvas", cv.SurfaceBuilds == builds);
+
+                        using (Bitmap fast = new Bitmap(440, 440))
+                        {
+                            cv.DrawToBitmap(fast, new Rectangle(0, 0, 440, 440));
+                            cv.PerfMode = false;
+                            using (Bitmap plain = new Bitmap(440, 440))
+                            {
+                                cv.DrawToBitmap(plain, new Rectangle(0, 0, 440, 440));
+                                int off = 0;
+                                for (int y = 0; y < 440; y++)
+                                    for (int x = 0; x < 440; x++)
+                                    {
+                                        Color a = plain.GetPixel(x, y), b = fast.GetPixel(x, y);
+                                        if (a.A != b.A || Math.Abs(a.R - b.R) > 1 ||
+                                            Math.Abs(a.G - b.G) > 1 || Math.Abs(a.B - b.B) > 1) off++;
+                                    }
+                                Check("perf patch matches the normal render" + (off == 0 ? "" : " (" + off + " pixels differ)"), off == 0);
+                            }
+                            cv.PerfMode = true;
+                        }
+                    }
                     cv.PerfMode = false;
                 }
             }
@@ -768,6 +843,20 @@ namespace HabboBadgeCreator
 
         static void CheckDiscord()
         {
+            Check("discord id validation",
+                DiscordRpc.IsValidAppId("123456789012345678") &&
+                !DiscordRpc.IsValidAppId("123") &&
+                !DiscordRpc.IsValidAppId("12345678901234567x") &&
+                !DiscordRpc.IsValidAppId(null));
+            Check("custom discord application wins over the built-in one",
+                DiscordRpc.ResolveAppId("123456789012345678") == "123456789012345678");
+            Check("a build without an application id resolves to none",
+                DiscordRpc.HasBuiltInAppId || DiscordRpc.ResolveAppId(" ") == "");
+            Check("the built-in application id is valid when set",
+                !DiscordRpc.HasBuiltInAppId || DiscordRpc.IsValidAppId(DiscordRpc.BuiltInAppId));
+            Check("rich presence defaults on only with a built-in application",
+                new AppSettings().DiscordEnabled == DiscordRpc.HasBuiltInAppId);
+
             string json = DiscordRpc.BuildActivityJson(4242, 1700000000, "Designing \"badges\"", "Golden Crown", "logo");
             Check("discord json: set_activity", json.IndexOf("\"cmd\":\"SET_ACTIVITY\"", StringComparison.Ordinal) >= 0);
             Check("discord json: pid", json.IndexOf("\"pid\":4242", StringComparison.Ordinal) >= 0);

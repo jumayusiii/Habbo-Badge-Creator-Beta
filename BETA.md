@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.14` |
+| Version | `1.4.5` | `1.4.5-beta.17` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -34,9 +34,9 @@ Both builds can run at the same time. They never read or write each other's gall
 - **Rotate and copy** — turn the artwork 90° clockwise (`R`) or anticlockwise (`Shift+R`), and
   copy the finished 40 × 40 badge to the clipboard with `Ctrl+Shift+C` or the button beside
   **Export PNG**.
-- **Performance mode** — Settings → Performance. While a stroke is running, only the touched
-  cells repaint, the grid and checkerboard come from a cache and the large preview is batched,
-  for less input lag and lower CPU load.
+- **Performance mode** — Settings → Performance. The finished canvas is cached, a repaint copies
+  the visible area instead of redrawing everything, and a stroke patches only the cells it
+  crosses: measured about 0.5–1 ms per mouse move instead of 7–10 ms, for less input lag and lower CPU load.
 - **Navy theme** — a third dark palette built from the same flat material tokens as Dark and
   Light, applied across the whole app.
 - **Custom theme designer** — Settings → Appearance → **Custom**. Pick a surface, accent and text
@@ -44,6 +44,24 @@ Both builds can run at the same time. They never read or write each other's gall
   recall them with one click, drag chips into a different order and double-click one to rename it.
 - **Extra canvas tools** — centre / thirds / quarter guides (`C`), horizontal and vertical flip
   (`Shift+H` / `Shift+V`), and arrow-key nudging of the active layer.
+
+### New in 1.4.5-beta.17
+
+Performance mode now paints from a cached canvas and patches only the stroke cells, so one
+mouse move costs roughly a tenth of the painting it did before. Rich Presence can ship with the app's
+own Discord application, so users no longer create one themselves. See the
+[full changelog](README.md#changelog).
+
+### New in 1.4.5-beta.16
+
+The Changelog sheet lays its text out once and blits a cache, with eased wheel and track
+scrolling. Performance mode now caches the grid and guides and repaints only the cells a
+stroke crosses. See the [full changelog](README.md#changelog).
+
+### New in 1.4.5-beta.15
+
+The Changelog sheet's scrollbar behaves like a normal one: drag the handle, click the track to
+page, or use the wheel. See the [full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.14
 
@@ -75,8 +93,8 @@ To remove the beta completely, delete the executable and the folder above.
   may still change.
 - The executable is not code-signed. Windows SmartScreen may ask you to confirm the first launch
   (**More info → Run anyway**).
-- Discord Rich Presence needs your own Discord Application ID. The app explains the one-time
-  setup under Settings → Discord.
+- Discord Rich Presence uses a built-in application once the publisher adds one. Builds without
+  it say so under Settings → Discord and accept a personal Application ID instead.
 - Windows 10 version 1903 or newer / Windows 11 is required because the app uses .NET Framework
   4.8, which ships with both.
 

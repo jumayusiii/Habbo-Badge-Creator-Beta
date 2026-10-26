@@ -1225,22 +1225,34 @@ namespace HabboBadgeCreator
 
         int zoom = 10;
         Bitmap cache;
-        int cacheVersion = -1, cacheZoom = -1;
+        int cacheVersion = -1, cacheZoom = -1, cacheDoc = -1;
 
         /// <summary>Performance mode (beta): cache the static board and repaint only dirty pixel cells.</summary>
         public bool PerfMode;
 
         Bitmap staticLayer;
         int staticKey;
+        Bitmap overlay;   // grid and guides, cached separately so they never touch the artwork
+        int overlayKey;
+        Bitmap surface;    // the finished canvas at display resolution, patched cell by cell
+        int surfaceKey;
+        int surfaceVersion = -1;
+        /// <summary>Test hook: how often the cached canvas had to be rebuilt from scratch.</summary>
+        internal int SurfaceBuilds;
 
         bool drawing;
         Point last;
         int hx = -1, hy = -1;
+        Region strokeDirty;   // cells repainted since the stroke began
+        readonly List<Rectangle> scratch = new List<Rectangle>();
+        PixelDoc watched;     // document whose Changed event this canvas listens to
+        bool selfWrite;       // our own pixel writes must not invalidate the caches
 
         public CanvasView()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.Opaque, true);
             BackColor = T.Card;
             Cursor = Cursors.Cross;
             TabStop = false;
@@ -1262,12 +1274,218 @@ namespace HabboBadgeCreator
         {
             if (cache != null) { cache.Dispose(); cache = null; }
             cacheVersion = -1;
+            cacheDoc = -1;
         }
 
         void DropStatic()
         {
             if (staticLayer != null) { staticLayer.Dispose(); staticLayer = null; }
             staticKey = 0;
+            if (overlay != null) { overlay.Dispose(); overlay = null; }
+            overlayKey = 0;
+            DropSurface();
+        }
+
+        void DropSurface()
+        {
+            if (surface != null) { surface.Dispose(); surface = null; }
+            surfaceKey = 0;
+            surfaceVersion = -1;
+        }
+
+        /// <summary>Everything the finished surface depends on except the artwork itself.</summary>
+        int SurfaceKey()
+        {
+            unchecked
+            {
+                int k = StaticKey();
+                k = k * 397 ^ OverlayKey();
+                k = k * 397 ^ Doc.GetHashCode();
+                return k;
+            }
+        }
+
+        /// <summary>
+        /// Performance mode keeps one already-rendered canvas bitmap. Painting is then a copy of
+        /// the clip rectangle, and a stroke patches the handful of cells it crossed instead of
+        /// scaling the 40 x 40 composite over the whole canvas again.
+        /// </summary>
+        void EnsureSurface()
+        {
+            if (Doc == null || Width <= 0 || Height <= 0) { DropSurface(); return; }
+            int key = SurfaceKey();
+            bool fits = surface != null && surface.Width == Width && surface.Height == Height;
+            if (fits && surfaceKey == key && surfaceVersion == Doc.Version) return;
+            if (!fits)
+            {
+                DropSurface();
+                surface = new Bitmap(Width, Height, PixelFormat.Format32bppPArgb);
+            }
+            surfaceKey = key;
+            surfaceVersion = Doc.Version;
+            SurfaceBuilds++;
+            using (Graphics sg = Graphics.FromImage(surface))
+            {
+                sg.SmoothingMode = SmoothingMode.None;
+                Rectangle r = CanvasRect();
+                if (staticLayer != null) sg.DrawImageUnscaled(staticLayer, 0, 0);
+                if (cache != null)
+                {
+                    sg.DrawImageUnscaled(cache, r);
+                }
+                else
+                {
+                    using (Bitmap src = Doc.ToBitmap())
+                    {
+                        sg.InterpolationMode = InterpolationMode.NearestNeighbor;
+                        sg.PixelOffsetMode = PixelOffsetMode.Half;
+                        sg.DrawImage(src, r);
+                    }
+                }
+                if (overlay != null) sg.DrawImageUnscaled(overlay, 0, 0);
+                // half-pixel offset belongs to the artwork copy only: the rounded rim must cover
+                // the same pixels as the normal render
+                sg.PixelOffsetMode = PixelOffsetMode.None;
+                using (Pen p = new Pen(T.FrameLine, 1f))
+                    sg.DrawRectangle(p, r.X - 1, r.Y - 1, r.Width + 1, r.Height + 1);
+                sg.SmoothingMode = SmoothingMode.AntiAlias;
+                T.StrokeRound(sg, BoardRect(), T.F(12f), T.Stroke, 1f);
+            }
+        }
+
+        /// <summary>Copies part of the cached surface; the only work a normal repaint does.</summary>
+        void BlitSurface(Graphics g, Rectangle clip)
+        {
+            if (surface == null) return;
+            Rectangle src = Rectangle.Intersect(clip, new Rectangle(0, 0, surface.Width, surface.Height));
+            if (src.Width <= 0 || src.Height <= 0) return;
+            g.SmoothingMode = SmoothingMode.None;
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = PixelOffsetMode.None;
+            g.DrawImage(surface, src, src, GraphicsUnit.Pixel);
+        }
+
+        /// <summary>Listens to the document so an outside edit (undo, layer switch) drops the caches.</summary>
+        void WatchDoc()
+        {
+            if (watched == Doc) return;
+            if (watched != null) watched.Changed -= DocChanged;
+            watched = Doc;
+            if (watched != null) watched.Changed += DocChanged;
+        }
+
+        void DocChanged()
+        {
+            if (selfWrite) return;
+            DropCache();
+            DropSurface();
+        }
+
+        void DrawHover(Graphics g)
+        {
+            if (hx < 0 || drawing || Doc == null) return;
+            Rectangle r = CanvasRect();
+            using (Pen p = new Pen(T.HoverOutline, 1.5f))
+                g.DrawRectangle(p, r.X + hx * zoom, r.Y + hy * zoom, zoom - 1, zoom - 1);
+        }
+
+        /// <summary>
+        /// Repaints the cells of a stroke segment inside the cached surface, then asks for only
+        /// those cells. The clip is the cell region itself, not its bounding box, so a fast flick
+        /// across the canvas costs the same as a slow one.
+        /// </summary>
+        void PatchCells(int x0, int y0, int x1, int y1)
+        {
+            if (!PerfMode || Doc == null || surface == null || cache == null)
+            {
+                Invalidate();
+                return;
+            }
+
+            WatchDoc();
+            Rectangle r = CanvasRect();
+            PatchCache(x0, y0, x1, y1);
+
+            List<Rectangle> cells = scratch;
+            cells.Clear();
+            int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+            int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+            int err = dx + dy;
+            int x = x0, y = y0;
+            while (true)
+            {
+                AddCell(cells, r, x, y);
+                if (Mirror) AddCell(cells, r, PixelDoc.N - 1 - x, y);
+                if (x == x1 && y == y1) break;
+                int e2 = err * 2;
+                if (e2 >= dy) { err += dy; x += sx; }
+                if (e2 <= dx) { err += dx; y += sy; }
+            }
+            if (cells.Count == 0) { surfaceVersion = Doc.Version; return; }
+
+            RectangleF[] rects = new RectangleF[cells.Count];
+            for (int i = 0; i < cells.Count; i++) rects[i] = cells[i];
+            using (GraphicsPath path = new GraphicsPath())
+            {
+                path.AddRectangles(rects);
+                using (Region region = new Region(path))
+                using (Graphics g = Graphics.FromImage(surface))
+                {
+                    g.SmoothingMode = SmoothingMode.None;
+                    GraphicsState st = g.Save();
+                    g.SetClip(region, CombineMode.Replace);
+                    // three copies for the whole segment: checkerboard, the patched artwork and
+                    // the grid back on top
+                    if (staticLayer != null) g.DrawImageUnscaled(staticLayer, 0, 0);
+                    g.DrawImageUnscaled(cache, r);
+                    if (overlay != null) g.DrawImageUnscaled(overlay, 0, 0);
+                    g.Restore(st);
+                    // only the cells of this segment are invalid; the accumulated region is
+                    // used while painting to avoid copying a diagonal's bounding box
+                    Invalidate(region);
+                    if (strokeDirty == null) strokeDirty = new Region();
+                    strokeDirty.Union(region);
+                }
+            }
+            surfaceVersion = Doc.Version;
+        }
+
+        void AddCell(List<Rectangle> cells, Rectangle r, int x, int y)
+        {
+            Rectangle cell = Rectangle.Intersect(new Rectangle(r.X + x * zoom, r.Y + y * zoom, zoom, zoom), r);
+            if (cell.Width > 0 && cell.Height > 0) cells.Add(cell);
+        }
+
+        /// <summary>Writes the new colours of the touched cells into the zoomed artwork cache.</summary>
+        void PatchCache(int x0, int y0, int x1, int y1)
+        {
+            if (cache == null) return;
+            using (Graphics g = Graphics.FromImage(cache))
+            using (SolidBrush px = new SolidBrush(Color.Black))
+            {
+                g.CompositingMode = CompositingMode.SourceCopy;
+                g.SmoothingMode = SmoothingMode.None;
+                int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+                int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+                int err = dx + dy;
+                int x = x0, y = y0;
+                while (true)
+                {
+                    px.Color = Color.FromArgb(Doc.CompositeAt(x, y));
+                    g.FillRectangle(px, x * zoom, y * zoom, zoom, zoom);
+                    if (Mirror)
+                    {
+                        px.Color = Color.FromArgb(Doc.CompositeAt(PixelDoc.N - 1 - x, y));
+                        g.FillRectangle(px, (PixelDoc.N - 1 - x) * zoom, y * zoom, zoom, zoom);
+                    }
+                    if (x == x1 && y == y1) break;
+                    int e2 = err * 2;
+                    if (e2 >= dy) { err += dy; x += sx; }
+                    if (e2 <= dx) { err += dx; y += sy; }
+                }
+            }
+            cacheVersion = Doc.Version;
+            cacheDoc = Doc.GetHashCode();
         }
 
         int StaticKey()
@@ -1316,6 +1534,74 @@ namespace HabboBadgeCreator
             return new Rectangle(x, y, side, side);
         }
 
+        int OverlayKey()
+        {
+            unchecked
+            {
+                int k = Width * 397 ^ Height;
+                k = k * 397 ^ zoom;
+                k = k * 397 ^ (ShowGrid ? 1 : 0);
+                k = k * 397 ^ Guides;
+                k = k * 397 ^ (int)T.Mode;
+                k = k * 397 ^ T.GridLine.ToArgb();
+                k = k * 397 ^ T.Gold.ToArgb();
+                return k;
+            }
+        }
+
+        /// <summary>Grid and guides over a transparent sheet; one blit replaces ~80 line draws.</summary>
+        void EnsureOverlay()
+        {
+            int key = OverlayKey();
+            if (overlay != null && overlayKey == key && overlay.Width == Width && overlay.Height == Height) return;
+            if (overlay != null) { overlay.Dispose(); overlay = null; }
+            if (Width <= 0 || Height <= 0) return;
+            overlay = new Bitmap(Width, Height, PixelFormat.Format32bppPArgb);
+            using (Graphics g = Graphics.FromImage(overlay))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.None;
+                Rectangle r = CanvasRect();
+                DrawGrid(g, r);
+                DrawGuides(g, r);
+            }
+            overlayKey = key;
+        }
+
+        void DrawGrid(Graphics g, Rectangle r)
+        {
+            if (!ShowGrid || zoom < 11) return;
+            using (Pen p = new Pen(T.GridLine, 1f))
+            {
+                for (int i = 1; i < PixelDoc.N; i++)
+                {
+                    int x = r.X + i * zoom;
+                    int y = r.Y + i * zoom;
+                    g.DrawLine(p, x, r.Y, x, r.Bottom);
+                    g.DrawLine(p, r.X, y, r.Right, y);
+                }
+            }
+        }
+
+        void DrawGuides(Graphics g, Rectangle r)
+        {
+            if (Guides <= 0) return;
+            using (Pen under = new Pen(Color.FromArgb(90, 0, 0, 0), 1f))
+            using (Pen mark = new Pen(T.Gold, 1f))
+            {
+                mark.DashPattern = new float[] { 3f, 3f };
+                foreach (int f in GuideFractions())
+                {
+                    int gx = r.X + f * zoom;
+                    int gy = r.Y + f * zoom;
+                    g.DrawLine(under, gx, r.Y, gx, r.Bottom);
+                    g.DrawLine(under, r.X, gy, r.Right, gy);
+                    g.DrawLine(mark, gx, r.Y, gx, r.Bottom);
+                    g.DrawLine(mark, r.X, gy, r.Right, gy);
+                }
+            }
+        }
+
         RectangleF BoardRect()
         {
             return new RectangleF(0.5f, 0.5f, Width - 1f, Height - 1f);
@@ -1324,7 +1610,8 @@ namespace HabboBadgeCreator
         void EnsureCache()
         {
             if (Doc == null) { DropCache(); return; }
-            if (cache != null && cacheVersion == Doc.Version && cacheZoom == zoom) return;
+            if (cache != null && cacheVersion == Doc.Version && cacheZoom == zoom
+                && cacheDoc == Doc.GetHashCode()) return;
             int side = PixelDoc.N * zoom;
             // perf mode repaints into the same bitmap instead of allocating one per move
             bool reuse = PerfMode && cache != null && cache.Width == side && cache.Height == side;
@@ -1343,79 +1630,65 @@ namespace HabboBadgeCreator
             }
             cacheVersion = Doc.Version;
             cacheZoom = zoom;
+            cacheDoc = Doc.GetHashCode();
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;
+            WatchDoc();
             if (Doc == null)
             {
                 using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
                 return;
             }
 
-            Rectangle r = CanvasRect();
-
-            // perf mode blits the board and checkerboard from a cached bitmap instead of
-            // redrawing them on every mouse move
+            // Performance mode paints the canvas from a finished bitmap: a repaint copies a
+            // rectangle instead of redrawing board, checkerboard, artwork and grid every time.
             if (PerfMode)
             {
                 EnsureStatic();
-                if (staticLayer != null) g.DrawImageUnscaled(staticLayer, 0, 0);
+                EnsureOverlay();
+                EnsureCache();
+                EnsureSurface();
+                if (surface == null)
+                {
+                    using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
+                    return;
+                }
+                Rectangle clip = Rectangle.Intersect(e.ClipRectangle, ClientRectangle);
+                if (clip.Width <= 0 || clip.Height <= 0) clip = ClientRectangle;
+                // the buffered Graphics is not guaranteed to carry the paint region, and without
+                // it a cell-sized repaint still copies the whole canvas
+                GraphicsState st = g.Save();
+                g.SetClip(clip, CombineMode.Intersect);
+                // during a stroke the only change is the patched cells, so never copy the
+                // bounding box of a diagonal flick
+                if (drawing && strokeDirty != null) g.SetClip(strokeDirty, CombineMode.Intersect);
+                BlitSurface(g, clip);
+                DrawHover(g);
+                g.Restore(st);
+                return;
             }
-            else
-            {
-                using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                T.FillRound(g, BoardRect(), T.F(12f), T.Inset);
-                g.SmoothingMode = SmoothingMode.None;
-                T.Checker(g, r);
-            }
+
+            Rectangle r = CanvasRect();
+            using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            T.FillRound(g, BoardRect(), T.F(12f), T.Inset);
+            g.SmoothingMode = SmoothingMode.None;
+            T.Checker(g, r);
 
             EnsureCache();
             if (cache != null) g.DrawImageUnscaled(cache, r);
             g.SmoothingMode = SmoothingMode.None;
 
-            if (ShowGrid && zoom >= 11)
-            {
-                using (Pen p = new Pen(T.GridLine, 1f))
-                {
-                    for (int i = 1; i < PixelDoc.N; i++)
-                    {
-                        int x = r.X + i * zoom;
-                        int y = r.Y + i * zoom;
-                        g.DrawLine(p, x, r.Y, x, r.Bottom);
-                        g.DrawLine(p, r.X, y, r.Right, y);
-                    }
-                }
-            }
-
-            if (Guides > 0)
-            {
-                using (Pen under = new Pen(Color.FromArgb(90, 0, 0, 0), 1f))
-                using (Pen mark = new Pen(T.Gold, 1f))
-                {
-                    mark.DashPattern = new float[] { 3f, 3f };
-                    foreach (int f in GuideFractions())
-                    {
-                        int gx = r.X + f * zoom;
-                        int gy = r.Y + f * zoom;
-                        g.DrawLine(under, gx, r.Y, gx, r.Bottom);
-                        g.DrawLine(under, r.X, gy, r.Right, gy);
-                        g.DrawLine(mark, gx, r.Y, gx, r.Bottom);
-                        g.DrawLine(mark, r.X, gy, r.Right, gy);
-                    }
-                }
-            }
+            DrawGrid(g, r);
+            DrawGuides(g, r);
 
             using (Pen p = new Pen(T.FrameLine, 1f))
                 g.DrawRectangle(p, r.X - 1, r.Y - 1, r.Width + 1, r.Height + 1);
 
-            if (hx >= 0)
-            {
-                using (Pen p = new Pen(T.HoverOutline, 1.5f))
-                    g.DrawRectangle(p, r.X + hx * zoom, r.Y + hy * zoom, zoom - 1, zoom - 1);
-            }
+            DrawHover(g);
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
             T.StrokeRound(g, BoardRect(), T.F(12f), T.Stroke, 1f);
@@ -1467,18 +1740,37 @@ namespace HabboBadgeCreator
             }
             if (Tool == 2 && !erase)
             {
-                Doc.BeginStroke();
-                Doc.FloodFill(c.X, c.Y, PaintColor());
-                Doc.EndStroke();
+                selfWrite = true;
+                try
+                {
+                    Doc.BeginStroke();
+                    Doc.FloodFill(c.X, c.Y, PaintColor());
+                    Doc.EndStroke();
+                }
+                finally { selfWrite = false; }
                 Invalidate();
                 return;
             }
             int argb = erase ? 0 : PaintColor();
-            Doc.BeginStroke();
-            Doc.SetPixels(c.X, c.Y, argb, Mirror);
+            if (PerfMode)
+            {
+                // the surface has to be current before the first cell is patched into it
+                EnsureStatic();
+                EnsureOverlay();
+                EnsureCache();
+                EnsureSurface();
+            }
+            DropStrokeDirty();
+            selfWrite = true;
+            try
+            {
+                Doc.BeginStroke();
+                Doc.SetPixels(c.X, c.Y, argb, Mirror);
+            }
+            finally { selfWrite = false; }
             drawing = true;
             last = c;
-            if (PerfMode) InvalidateCells(c.X, c.Y, c.X, c.Y);
+            if (PerfMode) PatchCells(c.X, c.Y, c.X, c.Y);
             else Invalidate();
         }
 
@@ -1492,22 +1784,64 @@ namespace HabboBadgeCreator
                 int fromX = last.X, fromY = last.Y;
                 if (c != last)
                 {
-                    Doc.StrokeLine(last.X, last.Y, c.X, c.Y, PaintColor(), Mirror);
+                    selfWrite = true;
+                    try { Doc.StrokeLine(last.X, last.Y, c.X, c.Y, PaintColor(), Mirror); }
+                    finally { selfWrite = false; }
                     last = c;
+                    // perf mode patches just the cells on the segment into the cached canvas
+                    if (PerfMode) PatchCells(fromX, fromY, c.X, c.Y);
+                    else Invalidate();
                 }
-                // perf mode repaints just the cells the stroke touched (plus its mirror twin)
-                if (PerfMode) InvalidateCells(fromX, fromY, c.X, c.Y);
-                else Invalidate();
                 return;
             }
             int nx = inCell ? c.X : -1;
             int ny = inCell ? c.Y : -1;
             if (nx != hx || ny != hy)
             {
+                if (PerfMode)
+                {
+                    if (hx >= 0) Invalidate(HoverRect(hx, hy));
+                    if (nx >= 0) Invalidate(HoverRect(nx, ny));
+                }
+                else Invalidate();
                 hx = nx; hy = ny;
-                Invalidate();
                 if (HoverChanged != null) HoverChanged();
             }
+        }
+
+        /// <summary>Test hook: paints as if a stroke were running, covering the fast path.</summary>
+        internal void DebugDrawing(bool value)
+        {
+            drawing = value;
+            Invalidate();
+        }
+
+        /// <summary>Test hook: patches a cell segment exactly the way a mouse move does.</summary>
+        internal void DebugPatch(int x0, int y0, int x1, int y1)
+        {
+            PatchCells(x0, y0, x1, y1);
+        }
+
+        /// <summary>Test hook: draws a segment through the real stroke path.</summary>
+        internal void DebugStroke(int x0, int y0, int x1, int y1, int argb)
+        {
+            if (Doc == null) return;
+            selfWrite = true;
+            try { Doc.StrokeLine(x0, y0, x1, y1, argb, false); }
+            finally { selfWrite = false; }
+            PatchCells(x0, y0, x1, y1);
+        }
+
+        /// <summary>Test hook: paints one pixel through the real stroke path.</summary>
+        internal void DebugPaintPixel(int x, int y, int argb)
+        {
+            if (Doc == null) return;
+            EnsureCache();
+            EnsureSurface();
+            selfWrite = true;
+            try { Doc.SetPixels(x, y, argb, false); }
+            finally { selfWrite = false; }
+            PatchCells(x, y, x, y);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -1522,8 +1856,9 @@ namespace HabboBadgeCreator
             base.OnMouseLeave(e);
             if (hx != -1 || hy != -1)
             {
+                if (PerfMode && hx >= 0) Invalidate(HoverRect(hx, hy));
+                else Invalidate();
                 hx = -1; hy = -1;
-                Invalidate();
                 if (HoverChanged != null) HoverChanged();
             }
         }
@@ -1538,7 +1873,20 @@ namespace HabboBadgeCreator
         {
             if (!drawing) return;
             drawing = false;
-            if (Doc != null) Doc.EndStroke();
+            DropStrokeDirty();
+            if (Doc != null)
+            {
+                selfWrite = true;
+                try { Doc.EndStroke(); }
+                finally { selfWrite = false; }
+            }
+        }
+
+        void DropStrokeDirty()
+        {
+            if (strokeDirty == null) return;
+            strokeDirty.Dispose();
+            strokeDirty = null;
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
@@ -1550,24 +1898,15 @@ namespace HabboBadgeCreator
             Invalidate();
         }
 
-        /// <summary>Invalidates the pixel rectangle between two cells, padded for the grid and frame.</summary>
-        void InvalidateCells(int x0, int y0, int x1, int y1)
+        Rectangle CellRect(int x, int y, int pad)
         {
             Rectangle r = CanvasRect();
-            int pad = T.P(3);
-            int l = Math.Min(x0, x1), rr = Math.Max(x0, x1);
-            int t = Math.Min(y0, y1), b = Math.Max(y0, y1);
-            Rectangle d = Rectangle.FromLTRB(
-                r.X + l * zoom - pad, r.Y + t * zoom - pad,
-                r.X + (rr + 1) * zoom + pad, r.Y + (b + 1) * zoom + pad);
-            Invalidate(d);
-            if (Mirror)
-            {
-                int ml = PixelDoc.N - 1 - rr, mr = PixelDoc.N - 1 - l;
-                Invalidate(Rectangle.FromLTRB(
-                    r.X + ml * zoom - pad, d.Top,
-                    r.X + (mr + 1) * zoom + pad, d.Bottom));
-            }
+            return new Rectangle(r.X + x * zoom - pad, r.Y + y * zoom - pad, zoom + pad * 2, zoom + pad * 2);
+        }
+
+        Rectangle HoverRect(int x, int y)
+        {
+            return CellRect(x, y, T.P(2));
         }
 
         protected override void OnResize(EventArgs e)
@@ -1579,7 +1918,13 @@ namespace HabboBadgeCreator
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { DropCache(); DropStatic(); }
+            if (disposing)
+            {
+                if (watched != null) { watched.Changed -= DocChanged; watched = null; }
+                DropCache();
+                DropStatic();
+                DropStrokeDirty();
+            }
             base.Dispose(disposing);
         }
     }

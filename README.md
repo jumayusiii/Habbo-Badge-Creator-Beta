@@ -28,7 +28,7 @@ Deutsche Oberfläche: [docs/preview-de.png](docs/preview-de.png)
 - **Windows SmartScreen:** the build is not code-signed, so Windows may show
   “Windows protected your PC”. Choose **More info → Run anyway**.
 - **Verify the download:** use the `SHA256SUMS.txt` from the same release:
-  `certutil -hashfile "Habbo Badge Creator Beta 1.4.5-beta.14.zip" SHA256`.
+  `certutil -hashfile "Habbo Badge Creator Beta <version>.zip" SHA256`.
 - **Uninstall:** delete the `.exe`. Delete `%APPDATA%\HabboBadgeCreatorBeta` to remove saved
   badges, the draft and settings as well.
 
@@ -46,7 +46,7 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **Arrow keys** nudge the active layer by 1 px, `Shift`+arrow by 5 px
 - **Beta: rotate** the whole badge 90° clockwise (`R`) or anticlockwise (`Shift`+`R`)
 - **Beta: copy to clipboard** — send the finished 40 × 40 badge straight into Discord, Paint or any other app with the button next to Export PNG (`Ctrl`+`Shift`+`C`)
-- **Beta: Performance mode** in Settings — only touched pixels repaint, grid and checkerboard are cached and the large preview is batched while you paint, for lower CPU load and less input lag
+- **Beta: Performance mode** in Settings — the finished canvas is cached, a repaint copies just the  visible area and a stroke patches only the cells it crosses: roughly a tenth of the painting per mouse move, lower CPU load and less input lag
 - **28 colour palette** plus a full custom colour picker
 - **Undo / redo** (80 steps), right-click always erases
 - **Import** PNG / GIF / JPG / BMP (button or drag the file onto the window) — auto-scaled to 40 × 40
@@ -56,7 +56,7 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **Live painting** — the canvas and preview follow the cursor pixel by pixel while you drag
 - **Adaptive window** — rounded, borderless, with a flat app bar; the layout compacts itself on short screens (e.g. 150% scaling on 1080p)
 - **English / German** — one click on the `EN | DE` switch in the header, remembered for next launch
-- **Discord Rich Presence** — shows the app and your badge-in-progress on your Discord profile
+- **Discord Rich Presence** — shows the app and your badge-in-progress on your Discord profile. A release carries its own Discord application, so there is nothing to set up; a personal Application ID can still be entered in Settings
 - **Boot splash** — the HABBO wordmark fades in and out while the app starts (click or press a key to skip)
 - **Changelog** — the `Changelog` chip in the header opens the versioned release notes of every update, in the current language
 - **Dark / light / navy / custom theme** — the `Settings` chip opens Settings, where a visual picker switches the whole app (and the splash) between the dark, light and **Navy** palettes, plus a **beta Custom** designer: pick a surface, an accent and a text colour, save named presets, recall them with one click, drag them into a different order and double-click to rename one; the choice is remembered
@@ -111,6 +111,9 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.17 | 26 Oct 2026 | **Beta:** Performance mode paints from a cached canvas and patches only the stroke cells (roughly 10× less work per move); Rich Presence ships with the app's own Discord application |
+| 1.4.5-beta.16 | 26 Oct 2026 | **Beta:** cached, eased changelog scrolling; Performance mode repaints only the stroke cells |
+| 1.4.5-beta.15 | 26 Oct 2026 | **Beta:** changelog scrollbar can be dragged, clicked and wheeled |
 | 1.4.5-beta.14 | 26 Oct 2026 | **Beta:** public release polish — Windows file details, release package, docs; no feature changes |
 | 1.4.5-beta.13 | 26 Oct 2026 | **Beta:** drag presets to reorder, double-click to rename; 125% and 150% layouts driven for real |
 | 1.4.5-beta.12 | 26 Oct 2026 | **Beta:** named custom-theme presets; designer chrome follows the live palette |
@@ -137,27 +140,40 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 ## Discord Rich Presence
 
-Discord only accepts presence from a registered *application*, so this needs a one-time
-setup of about two minutes (there is no way around it — the ID has to exist on Discord's
-side):
+Discord only accepts presence from a registered *application*. A release therefore carries
+one built into the app: in those builds Rich Presence is on by default, uses the app's own
+Discord application and needs no setup from you. Keep the Discord desktop client running and
+your profile shows **Habbo Badge Creator** with the badge name you are working on.
 
-1. Open <https://discord.com/developers/applications> → **New Application** and name it
-   `Habbo Badge Creator` (that name is what your profile shows).
-2. **Rich Presence → Art Assets** → upload `assets\logo.png` and set its image key to
-   `logo` (or use any key and type it into the app). In the app, the **Developer Portal**
-   button in Settings opens exactly this page once your Application ID is entered, and the
-   application list while the field is empty.
-3. Copy the **Application ID** from *General Information*.
-4. Start the app, click **Settings** in the header and paste the ID under *Discord*. Turn
-   Rich Presence on and press **Save**.
+Want your own application name and artwork instead? Enter a personal **Application ID**
+under *Settings → Discord Rich Presence*; it takes precedence over the built-in one.
 
-The app keeps the presence updated while it runs (badge name as the second line) and
-reconnects on its own when Discord starts later. The dot on the **Settings** chip reports
-the state at a glance — teal connected, gold waiting for Discord, red refused — and the
-dot only appears while Rich Presence is configured. Hovering the chip spells that state out
-in words (`Connected`, `Connecting…`, `Discord is not running`, `Connection refused`, `Off`).
+A build that does not carry an application yet says so in Settings instead of pretending:
+until the publisher adds one, paste your own ID there.
+
+The app keeps the presence updated while it runs and reconnects on its own when Discord
+starts later. The dot on the **Settings** chip reports the state at a glance — teal
+connected, gold waiting for Discord, red refused — and the dot only appears while Rich
+Presence is configured. Hovering the chip spells that state out in words (`Connected`,
+`Connecting…`, `Discord is not running`, `Connection refused`, `Off`).
 Everything stays local: it talks to the Discord desktop client over
 `\\.\pipe\discord-ipc-0…9`, no bot token, no network calls.
+
+### Publisher: adding the built-in application (once)
+
+1. Open <https://discord.com/developers/applications> → **New Application** and name it
+   `Habbo Badge Creator` (that name is what profiles show).
+2. **Rich Presence → Art Assets** → upload `assets/discord/rich-presence-1024.png`
+   (1024 × 1024) and set its image key to `logo`. New assets can take a few minutes to appear.
+3. Copy the **Application ID** from *General Information* and paste it into
+   `DiscordRpc.BuiltInAppId` in [src/Discord.cs](src/Discord.cs), then rebuild once
+   (`build.bat`).
+
+From that build on, every user gets Rich Presence without creating anything. The ID is
+public by nature (it is what Discord uses to attach the app's name and artwork); no secret,
+bot token or OAuth data is involved. In the app, the **Developer Portal** button in Settings
+opens the Art Assets page of whichever application is in use — the built-in one when the
+field is empty.
 
 ![Settings chip tooltip showing the Discord state](docs/tooltip.png)
 
@@ -244,7 +260,7 @@ build.bat
 | `src/MainForm.cs` | window layout, tools, shortcuts, window chrome |
 | `src/SettingsForm.cs` | settings sheet: appearance, performance and Discord Rich Presence |
 | `src/ThemeDesigner.cs` | beta custom-theme designer with named, reorderable presets |
-| `src/Discord.cs` | Discord IPC client (handshake, activity frames, reconnect) |
+| `src/Discord.cs` | Discord IPC client (handshake, activity frames, reconnect) and the built-in application ID |
 | `src/Lang.cs` | English / German string lookup |
 | `src/Splash.cs` | startup splash with the fading HABBO wordmark |
 | `src/Changelog.cs` | app version, footer credit and the release-notes sheet |
@@ -254,6 +270,7 @@ build.bat
 | `assets/logo.png` | app icon, footer mark and settings-sheet tile |
 | `assets/habbo-wordmark.png` | HABBO logo shown in the header |
 | `assets/habbo.ico` | generated icon used for `Habbo Badge Creator Beta.exe` |
+| `assets/discord/rich-presence-1024.png` | Rich Presence art asset to upload once (`logo`) for the built-in Discord application |
 
 ### Developer flags
 

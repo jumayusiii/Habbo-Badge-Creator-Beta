@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 
 namespace HabboBadgeCreator
@@ -8,13 +9,72 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.14";
-        public const string Build = "2026-10-26.14";
+        public const string Version = "1.4.5-beta.17";
+        public const string Build = "2026-10-26.17";
         public const string Date = "26 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.17", "26 Oct 2026",
+                "Lighter Performance mode, Rich Presence out of the box",
+                "Leichterer Leistungsmodus, Rich Presence ohne Einrichtung",
+                new string[]
+                {
+                    "Performance mode now keeps the finished canvas in a cache. Repainting the same content is a copy of the visible area instead of redrawing the board, checkerboard, artwork, grid and rounded frame: about 1 ms instead of about 7 ms in measurement.",
+                    "A stroke patches only the cells it crosses into that cache and asks Windows for exactly those cells, not their bounding box — a fast flick across the canvas now costs the same as a slow drag.",
+                    "Measured on a 740 × 660 canvas at 14× zoom: one mouse move while painting takes about 0.5–1 ms with Performance mode and 7–10 ms without, roughly ten times less work. The zoomed canvas is no longer rebuilt on every move.",
+                    "The fast path is compared against the normal render pixel by pixel in the self-test suite, and a test asserts that a stroke does not rebuild the cached canvas.",
+                    "Rich Presence can now ship with the app's own Discord application: one Application ID built into the release is used by everyone, so users no longer create a Discord application themselves. A personal ID entered under Settings still wins over the built-in one.",
+                    "A build that carries the application switches Rich Presence on for a new install; a build without one says so in Settings instead of asking every user to set one up."
+                },
+                new string[]
+                {
+                    "Der Leistungsmodus hält die fertige Zeichenfläche jetzt im Cache. Dasselbe Bild neu zu zeichnen kopiert nur den sichtbaren Bereich, statt Brett, Schachbrett, Grafik, Raster und runden Rahmen neu zu zeichnen: rund 1 ms statt rund 7 ms im Test.",
+                    "Ein Strich schreibt nur die Zellen in diesen Cache, die er kreuzt, und fordert von Windows genau diese Zellen an – nicht ihr umschließendes Rechteck. Ein schneller Zug über die Fläche kostet damit so viel wie ein langsamer.",
+                    "Auf einer 740 × 660-Fläche bei 14× Zoom gemessen: eine Mausbewegung beim Malen dauert mit Leistungsmodus etwa 0,5–1 ms und ohne 7–10 ms, also rund zehnmal weniger Arbeit. Der zoomierte Canvas wird nicht mehr bei jeder Bewegung neu gebaut.",
+                    "Der schnelle Pfad wird in den Selbsttests Pixel für Pixel mit dem normalen Zeichnen verglichen; ein Test prüft zusätzlich, dass ein Strich den Cache nicht neu aufbaut.",
+                    "Rich Presence kann jetzt mit der eigenen Discord-Anwendung der App ausgeliefert werden: eine im Release eingebaute Application-ID gilt für alle, sodass Nutzer keine eigene Discord-Anwendung mehr erstellen müssen. Eine eigene ID in den Einstellungen hat weiterhin Vorrang.",
+                    "Ein Build mit eigener Anwendung schaltet Rich Presence bei einer Neuinstallation ein; ein Build ohne sie sagt das in den Einstellungen, statt von jedem Nutzer eine Einrichtung zu verlangen."
+                }),
+            new ReleaseNote("1.4.5-beta.16", "26 Oct 2026",
+                "Smooth changelog, faster Performance mode",
+                "Ruhiger Changelog, schnellerer Leistungsmodus",
+                new string[]
+                {
+                    "The changelog no longer re-wraps every entry on each scroll step. The whole sheet is measured and drawn once into a cache, and each frame is a crop of it: a full scroll frame dropped from about 110 ms to about 3 ms in measurement.",
+                    "Wheel and track scrolling now ease into place over a dozen frames instead of jumping, and dragging the thumb still follows the pointer 1:1.",
+                    "Performance mode caches the grid and guides in their own overlay and repaints only the cells a stroke actually crosses, instead of the whole bounding box of a fast mouse move.",
+                    "While a stroke runs, the zoomed canvas cache is no longer rebuilt on every mouse move: the 40 × 40 composite is painted straight to the canvas, and the toolbar, layer panel and large preview wait for the end of the stroke.",
+                    "Measured before and after on the same 740 × 660 canvas at 14× zoom: one moved cell went from 1.55 ms to 0.4 ms of paint time, and a changelog scroll frame from 111 ms to 2.8 ms.",
+                    "The full self-test suite also compares the cached render against the normal render pixel by pixel, so the fast path cannot drift visually."
+                },
+                new string[]
+                {
+                    "Der Changelog baut nicht mehr bei jedem Scroll-Schritt den gesamten Text neu auf. Das Blatt wird einmal vermessen und in einen Cache gezeichnet, jedes Bild ist nur noch ein Ausschnitt daraus: ein volles Scroll-Bild fiel im Test von rund 110 ms auf etwa 3 ms.",
+                    "Mausrad und Klick in die Leiste gleiten jetzt über ein Dutzend Bilder an die Zielposition, statt zu springen; der Griff folgt der Maus weiterhin 1:1.",
+                    "Der Leistungsmodus legt Raster und Hilfslinien in eine eigene Ebene im Cache und zeichnet nur noch die Pixel neu, die ein Strich wirklich kreuzt – nicht mehr das ganze Rechteck eines schnellen Mauszugs.",
+                    "Während eines Strichs wird der zoomierte Canvas-Cache nicht mehr bei jeder Mausbewegung neu gebaut: Das 40 × 40-Composite geht direkt auf die Fläche, und Werkzeugleiste, Ebenen-Panel und große Vorschau warten auf das Ende des Strichs.",
+                    "Vorher/Nachher auf derselben 740 × 660-Fläche bei 14× Zoom gemessen: ein bewegtes Pixel sank von 1,55 ms auf 0,4 ms Zeichenzeit, ein Changelog-Scrollbild von 111 ms auf 2,8 ms.",
+                    "Die Selbsttests vergleichen den Cache zusätzlich Pixel für Pixel mit dem normalen Zeichnen, damit der schnelle Pfad optisch nicht abweicht."
+                }),
+            new ReleaseNote("1.4.5-beta.15", "26 Oct 2026",
+                "Changelog scrolls with the mouse",
+                "Änderungen lassen sich mit der Maus scrollen",
+                new string[]
+                {
+                    "The bar on the right of the Changelog sheet is a real scrollbar now: drag the handle to move through the notes, or click the track above or below it to page up and down.",
+                    "The handle grows on hover so it is easy to grab, and it stops cleanly at the first and last entry instead of running past the ends.",
+                    "The mouse wheel still scrolls the notes, and it now scrolls exactly once per notch instead of being handled twice.",
+                    "Checked in the running app with real mouse input: drag, track clicks, wheel and dragging past the end."
+                },
+                new string[]
+                {
+                    "Der Balken rechts im Änderungsfenster ist jetzt eine echte Bildlaufleiste: den Griff ziehen, um durch die Einträge zu fahren, oder über oder unter ihm in die Leiste klicken, um seitenweise zu blättern.",
+                    "Der Griff wird beim Überfahren breiter und lässt sich so leichter greifen; am ersten und letzten Eintrag hält er sauber an, statt über das Ende hinauszulaufen.",
+                    "Das Mausrad scrollt weiterhin, jetzt aber genau eine Raste pro Schritt statt doppelt.",
+                    "In der laufenden App mit echter Maus geprüft: Ziehen, Klicks in die Leiste, Mausrad und Ziehen über das Ende hinaus."
+                }),
             new ReleaseNote("1.4.5-beta.14", "26 Oct 2026",
                 "Public beta release",
                 "Öffentliche Beta",
@@ -520,14 +580,23 @@ namespace HabboBadgeCreator
     }
 
     /// <summary>
-    /// The release notes scroll inside their own control, so the window clips them the way a
-    /// real viewport does. (GDI text ignores Graphics clip paths, and blitting a transparent
-    /// offscreen buffer made the light theme's glyphs ghost.)
+    /// The release notes are laid out once into an opaque bitmap and the viewport is a crop of
+    /// it, so scrolling is a blit instead of re-wrapping every entry on every wheel notch. The
+    /// bitmap has a filled background on purpose: a transparent buffer made ClearType glyphs
+    /// ghost in the light theme.
     /// </summary>
     internal class ReleaseList : Control
     {
         int scroll;
         int contentH = -1;
+        bool hotBar, dragBar;
+        int dragGrab;
+
+        Bitmap content;
+        int contentKey;
+        int targetScroll;
+        bool gliding;
+        readonly Timer glide = new Timer();
 
         public ReleaseList()
         {
@@ -535,38 +604,162 @@ namespace HabboBadgeCreator
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = T.Card;
             TabStop = false;
+            glide.Interval = 15;
+            glide.Tick += delegate { GlideTick(); };
         }
 
         int ContentWidth { get { return Width - T.P(44) - T.P(10); } }
 
+        /// <summary>Scrolls by a wheel notch or a page, easing into the new position.</summary>
         public void ScrollBy(int delta)
         {
-            int max = Math.Max(0, contentH - Height);
-            int ns = Math.Max(0, Math.Min(max, scroll + delta));
+            int from = gliding ? targetScroll : scroll;
+            int to = Math.Max(0, Math.Min(MaxScroll, from + delta));
+            if (to == scroll && !gliding) return;
+            targetScroll = to;
+            if (gliding) return;
+            gliding = true;
+            glide.Start();
+        }
+
+        void SetScrollNow(int value)
+        {
+            if (gliding) { gliding = false; glide.Stop(); }
+            int ns = Math.Max(0, Math.Min(MaxScroll, value));
             if (ns == scroll) return;
             scroll = ns;
             Invalidate();
         }
 
+        void GlideTick()
+        {
+            int diff = targetScroll - scroll;
+            if (diff == 0) { gliding = false; glide.Stop(); return; }
+            int step = (int)Math.Round(diff * 0.30);
+            if (step == 0) step = diff > 0 ? 1 : -1;
+            scroll += step;
+            Invalidate();
+            if (Math.Abs(targetScroll - scroll) <= 1)
+            {
+                scroll = targetScroll;
+                gliding = false;
+                glide.Stop();
+                Invalidate();
+            }
+        }
+
+        int MaxScroll { get { return Math.Max(0, contentH - Height); } }
+
+        int ContentKey()
+        {
+            unchecked
+            {
+                int k = Width;
+                k = k * 397 ^ (int)T.Mode;
+                k = k * 397 ^ BackColor.ToArgb();
+                k = k * 397 ^ (L.De ? 1 : 0);
+                return k;
+            }
+        }
+
+        int BulletHeight(string bullet, int width)
+        {
+            Size sz = TextRenderer.MeasureText(bullet, T.FSmall, new Size(width, T.P(400)),
+                TextFormatFlags.WordBreak | TextFormatFlags.NoPadding);
+            return Math.Max(T.P(16), sz.Height);
+        }
+
+        int ReleaseHeight(ReleaseNote r)
+        {
+            int w = ContentWidth - T.P(16);
+            int h = T.P(43) + T.P(16);
+            foreach (string bullet in r.Bullets) h += BulletHeight(bullet, w) + T.P(6);
+            return h;
+        }
+
+        int MeasureHeight()
+        {
+            int y = T.P(8) + T.P(72) + T.P(18);
+            foreach (ReleaseNote r in AppInfo.Releases) y += ReleaseHeight(r);
+            return y + T.P(8);
+        }
+
+        /// <summary>Lays the whole sheet out once; scrolling only crops this bitmap.</summary>
+        void EnsureContent()
+        {
+            int key = ContentKey();
+            if (content != null && contentKey == key && content.Width == Width) return;
+            if (content != null) { content.Dispose(); content = null; }
+            contentH = Math.Max(1, MeasureHeight());
+            if (Width <= 0 || Height <= 0) return;
+            content = new Bitmap(Width, contentH, PixelFormat.Format32bppPArgb);
+            using (Graphics g = Graphics.FromImage(content))
+            {
+                using (SolidBrush bg = new SolidBrush(BackColor))
+                    g.FillRectangle(bg, 0, 0, Width, contentH);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                int y = T.P(8);
+                y = DrawVersionCard(g, y);
+                foreach (ReleaseNote r in AppInfo.Releases)
+                    y = DrawRelease(g, y, r);
+            }
+            contentKey = key;
+            scroll = Math.Min(scroll, MaxScroll);
+        }
+
+        int BarHeight
+        {
+            get { return Math.Max(T.P(28), (int)((float)Height * Height / Math.Max(Height, contentH))); }
+        }
+
+        /// <summary>Generous hit area, since the drawn thumb is only a few pixels wide.</summary>
+        Rectangle ThumbHit
+        {
+            get
+            {
+                if (contentH <= Height) return Rectangle.Empty;
+                int barH = BarHeight;
+                int travel = Height - barH;
+                int max = Math.Max(1, MaxScroll);
+                int barY = travel <= 0 ? 0 : (int)((float)scroll * travel / max);
+                return new Rectangle(Width - T.P(12), barY, T.P(12), barH);
+            }
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;
-            T.PaintSheet(g, ClientRectangle, BackColor);
-            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
+            EnsureContent();
 
-            int y = T.P(8) - scroll;
-            y = DrawVersionCard(g, y);
-            foreach (ReleaseNote r in AppInfo.Releases)
-                y = DrawRelease(g, y, r);
-            contentH = y + scroll + T.P(8);
-
-            if (contentH > Height)
+            if (content != null)
             {
-                int barH = Math.Max(T.P(28), (int)((float)Height * Height / contentH));
-                int max = Math.Max(1, contentH - Height);
-                int barY = (int)((float)scroll * (Height - barH) / max);
-                T.FillRound(g, new RectangleF(Width - T.P(8), barY, T.P(4), barH), T.F(2f), T.ScrollBar);
+                int h = Math.Min(Height, content.Height - scroll);
+                if (h > 0)
+                    g.DrawImage(content, new Rectangle(0, 0, Width, h),
+                        new Rectangle(0, scroll, Width, h), GraphicsUnit.Pixel);
             }
+
+            DrawBar(g);
+        }
+
+        void DrawBar(Graphics g)
+        {
+            if (contentH <= Height) return;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            bool active = hotBar || dragBar;
+            int barH = BarHeight;
+            int max = Math.Max(1, MaxScroll);
+            int barY = (int)((float)scroll * (Height - barH) / max);
+            float bw = active ? T.F(6f) : T.F(4f);
+            float bx = active ? Width - T.P(11) : Width - T.P(10);
+            Color barColor = active ? T.Mix(T.ScrollBar, T.Text, 0.22f) : T.ScrollBar;
+            T.FillRound(g, new RectangleF(bx, barY, bw, barH), bw / 2f, barColor);
+        }
+
+        void InvalidateBar()
+        {
+            Invalidate(new Rectangle(Width - T.P(16), 0, T.P(16), Height));
         }
 
         int DrawVersionCard(Graphics g, int y)
@@ -598,9 +791,7 @@ namespace HabboBadgeCreator
             foreach (string bullet in r.Bullets)
             {
                 int w = ContentWidth - T.P(16);
-                Size sz = TextRenderer.MeasureText(bullet, T.FSmall, new Size(w, T.P(400)),
-                    TextFormatFlags.WordBreak | TextFormatFlags.NoPadding);
-                int h = Math.Max(T.P(16), sz.Height);
+                int h = BulletHeight(bullet, w);
                 using (SolidBrush dot = new SolidBrush(T.Gold))
                     g.FillEllipse(dot, pad + T.P(2), by + T.P(6), T.P(4), T.P(4));
                 T.Wrap(g, bullet, T.FSmall, T.Muted, new Rectangle(pad + T.P(16), by, w, h + T.P(2)));
@@ -609,11 +800,82 @@ namespace HabboBadgeCreator
             return by + T.P(16);
         }
 
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            Rectangle thumb = ThumbHit;
+            if (thumb.IsEmpty) return;
+            if (thumb.Contains(e.Location))
+            {
+                dragBar = true;
+                dragGrab = e.Y - thumb.Y;
+                Capture = true;
+                Invalidate();
+            }
+            else if (e.X >= Width - T.P(16))
+            {
+                ScrollBy(e.Y < thumb.Y ? -(Height - T.P(36)) : Height - T.P(36));
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (dragBar)
+            {
+                int travel = Height - BarHeight;
+                if (travel <= 0) return;
+                int y = Math.Max(0, Math.Min(travel, e.Y - dragGrab));
+                SetScrollNow((int)Math.Round((double)y * MaxScroll / travel));
+                return;
+            }
+            bool hot = !ThumbHit.IsEmpty && e.X >= Width - T.P(16) && ThumbHit.Contains(e.Location);
+            if (hot != hotBar) { hotBar = hot; InvalidateBar(); }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (!dragBar) return;
+            dragBar = false;
+            Capture = false;
+            InvalidateBar();
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            if (dragBar || !hotBar) return;
+            hotBar = false;
+            InvalidateBar();
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            ScrollBy(-e.Delta / 3);
+            HandledMouseEventArgs handled = e as HandledMouseEventArgs;
+            if (handled != null) handled.Handled = true;
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+            if (gliding) { gliding = false; glide.Stop(); }
+            if (content != null) { content.Dispose(); content = null; }
             contentH = -1;
             Invalidate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                glide.Stop();
+                glide.Dispose();
+                if (content != null) { content.Dispose(); content = null; }
+            }
+            base.Dispose(disposing);
         }
     }
 }

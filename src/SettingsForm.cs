@@ -190,7 +190,9 @@ namespace HabboBadgeCreator
 
         void ApplyLanguage()
         {
-            idField.SetPlaceholder(L.T("Paste your application ID", "Application-ID einfügen"));
+            idField.SetPlaceholder(DiscordRpc.HasBuiltInAppId
+                ? L.T("Built-in app — leave empty", "Eingebaute App – leer lassen")
+                : L.T("Paste your application ID", "Application-ID einfügen"));
             keyField.SetPlaceholder("logo");
             enableBtn.Label = Result.DiscordEnabled
                 ? L.T("Rich Presence: On", "Rich Presence: An")
@@ -238,15 +240,12 @@ namespace HabboBadgeCreator
             string id = idField.Value.Trim();
             string key = keyField.Value.Trim();
             if (key.Length == 0) key = "logo";
-            if (Result.DiscordEnabled)
+            if (Result.DiscordEnabled && DiscordRpc.ResolveAppId(id).Length == 0)
             {
-                if (!IsValidId(id))
-                {
-                    error = L.T("Enter a valid Discord Application ID — numbers only, 17–20 digits.",
-                                "Gib eine gültige Discord-Application-ID ein – nur Zahlen, 17–20 Stellen.");
-                    Invalidate();
-                    return;
-                }
+                error = L.T("Enter a valid Discord Application ID — numbers only, 17–20 digits.",
+                            "Gib eine gültige Discord-Application-ID ein – nur Zahlen, 17–20 Stellen.");
+                Invalidate();
+                return;
             }
             Result.DiscordAppId = id;
             Result.DiscordImageKey = key;
@@ -254,18 +253,11 @@ namespace HabboBadgeCreator
             Close();
         }
 
-        static bool IsValidId(string id)
-        {
-            if (id == null || id.Length < 17 || id.Length > 20) return false;
-            foreach (char c in id) if (c < '0' || c > '9') return false;
-            return true;
-        }
-
         /// <summary>Art Assets page for the entered application ID, or the application list without one.</summary>
         internal static string PortalUrl(string id)
         {
-            string clean = id == null ? "" : id.Trim();
-            return IsValidId(clean)
+            string clean = DiscordRpc.ResolveAppId(id);
+            return DiscordRpc.IsValidAppId(clean)
                 ? "https://discord.com/developers/applications/" + clean + "/rich-presence/assets"
                 : "https://discord.com/developers/applications";
         }
@@ -322,8 +314,8 @@ namespace HabboBadgeCreator
             T.Str(g, L.T("Performance mode", "Leistungsmodus"), T.FBtn, T.Text,
                 new Rectangle(pad + T.P(14), T.P(242), w - T.P(84), T.P(20)), T.FL);
             T.Wrap(g,
-                L.T("Repaints only what changed, keeps the grid and checkerboard cached and batches the preview while you paint — snappier strokes, less CPU.",
-                    "Zeichnet nur Geändertes neu, hält Raster und Schachbrett im Cache und bündelt die Vorschau beim Malen – flüssigere Striche, weniger CPU."),
+                L.T("Caches the finished canvas and repaints only the cells a stroke crosses: roughly ten times less painting per mouse move.",
+                    "Hält die fertige Leinwand im Cache und zeichnet nur die Zellen eines Strichs neu: rund zehnmal weniger Zeichenarbeit pro Bewegung."),
                 T.FSmall, T.Muted, new Rectangle(pad + T.P(14), T.P(262), w - T.P(84), T.P(30)));
 
             // the switch is painted with the sheet, not as a child control, so the row keeps its
@@ -343,13 +335,20 @@ namespace HabboBadgeCreator
             T.Str(g, L.T("DISCORD RICH PRESENCE", "DISCORD RICH PRESENCE"), T.FLabel, T.Dim,
                 new Rectangle(pad, T.P(318), T.P(320), T.P(16)), T.FL);
 
-            string help = L.T(
-                "Rich Presence shows Habbo Badge Creator on your Discord profile. Discord needs an application for that: create one in the Developer Portal, upload assets/logo.png under Rich Presence → Art Assets using the image key below, then paste the 17–20 digit Application ID here.",
-                "Rich Presence zeigt Habbo Badge Creator in deinem Discord-Profil. Dafür braucht Discord eine Anwendung: erstelle eine im Developer Portal, lade assets/logo.png unter Rich Presence → Art Assets mit dem Bild-Key unten hoch und füge hier die 17–20-stellige Application-ID ein.");
+            string help = DiscordRpc.HasBuiltInAppId
+                ? L.T(
+                    "Rich Presence uses the app's own Discord application, so it works out of the box: switch it on and keep the Discord desktop client running. The field below is optional — paste your own application ID only if you want your own app name and artwork.",
+                    "Rich Presence nutzt die eigene Discord-Anwendung der App und läuft damit ohne Einrichtung: einschalten und den Discord-Desktop-Client geöffnet lassen. Das Feld unten ist optional – füge nur dann eine eigene Application-ID ein, wenn du eigenen Namen und eigene Grafik möchtest.")
+                : L.T(
+                    "This build has no Discord application of its own yet. Until the publisher adds one, create an application in the Developer Portal, upload assets/logo.png under Rich Presence → Art Assets with the image key below, then paste its 17–20 digit ID here.",
+                    "Dieser Build bringt noch keine eigene Discord-Anwendung mit. Bis der Herausgeber eine hinzufügt: erstelle eine im Developer Portal, lade assets/logo.png unter Rich Presence → Art Assets mit dem Bild-Key unten hoch und füge hier die 17–20-stellige ID ein.");
             T.Wrap(g, help, T.FSmall, T.Muted, new Rectangle(pad, T.P(336), ClientSize.Width - pad * 2, T.P(56)));
 
-            T.Str(g, L.T("APPLICATION ID", "APPLICATION-ID"), T.FLabel, T.Dim,
-                new Rectangle(pad, T.P(400), T.P(300), T.P(16)), T.FL);
+            string idLabel = DiscordRpc.HasBuiltInAppId
+                ? L.T("CUSTOM APPLICATION ID (OPTIONAL)", "EIGENE APPLICATION-ID (OPTIONAL)")
+                : L.T("APPLICATION ID", "APPLICATION-ID");
+            T.Str(g, idLabel, T.FLabel, T.Dim,
+                new Rectangle(pad, T.P(400), T.P(360), T.P(16)), T.FL);
             T.Str(g, L.T("LARGE IMAGE KEY", "BILD-KEY (GROSS)"), T.FLabel, T.Dim,
                 new Rectangle(pad, T.P(472), T.P(300), T.P(16)), T.FL);
 
@@ -379,6 +378,10 @@ namespace HabboBadgeCreator
 
         string StatusText()
         {
+            if (Result.DiscordEnabled && !DiscordRpc.HasBuiltInAppId &&
+                DiscordRpc.ResolveAppId(idField == null ? null : idField.Value).Length == 0)
+                return L.T("No application ID in this build — paste your own, or ask the publisher to add one.",
+                           "Keine Application-ID in diesem Build – eigene einfügen oder den Herausgeber fragen.");
             if (Result.DiscordEnabled && DiscordRpc.Status == "off")
                 return L.T("Saved — Save closes this sheet and connects to Discord.",
                            "Bereit – Speichern schließt das Fenster und verbindet mit Discord.");

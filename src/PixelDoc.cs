@@ -746,8 +746,10 @@ namespace HabboBadgeCreator
         public string CustomAccent = "#F6C452";
         public string CustomText = "#E6EFFC";
         public List<ThemePreset> Presets = new List<ThemePreset>();
-        public bool DiscordEnabled = false;
-        public string DiscordAppId = "";
+        // on by default once the build carries its own Discord application: then there is
+        // nothing to set up and presence simply works while Discord is open
+        public bool DiscordEnabled = DiscordRpc.HasBuiltInAppId;
+        public string DiscordAppId = "";   // empty = use the publisher application from Discord.cs
         public string DiscordImageKey = "logo";
         public bool LayersBeta = false;
         public bool PerfMode = false;

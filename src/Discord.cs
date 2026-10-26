@@ -14,6 +14,14 @@ namespace HabboBadgeCreator
     /// </summary>
     internal static class DiscordRpc
     {
+        /// <summary>
+        /// The Discord application this build ships with, so Rich Presence works for everyone
+        /// without a per-user developer setup. The publisher registers one application once
+        /// (name "Habbo Badge Creator", icon assets/logo.png, Rich Presence asset key "logo") and
+        /// pastes its 17-20 digit ID here. Leave it empty for a build that has none.
+        /// </summary>
+        public const string BuiltInAppId = "";
+
         const int OpHandshake = 0, OpFrame = 1, OpClose = 2, OpPing = 3, OpPong = 4;
 
         static readonly object writeLock = new object();
@@ -53,6 +61,26 @@ namespace HabboBadgeCreator
             status = s;
             statusDetail = detail;
             if (Changed != null) Changed();
+        }
+
+        /// <summary>Discord uses numeric snowflakes of 17-20 digits.</summary>
+        public static bool IsValidAppId(string id)
+        {
+            if (id == null) return false;
+            id = id.Trim();
+            if (id.Length < 17 || id.Length > 20) return false;
+            foreach (char c in id) if (c < '0' || c > '9') return false;
+            return true;
+        }
+
+        /// <summary>True when this build carries a publisher application ID.</summary>
+        public static bool HasBuiltInAppId { get { return IsValidAppId(BuiltInAppId); } }
+
+        /// <summary>The application to connect with: the user's own, else the built-in one.</summary>
+        public static string ResolveAppId(string custom)
+        {
+            if (IsValidAppId(custom)) return custom.Trim();
+            return HasBuiltInAppId ? BuiltInAppId : "";
         }
 
         public static void Start(string id, string key)
