@@ -47,7 +47,7 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **Beta: rotate** the whole badge 90° clockwise (`R`) or anticlockwise (`Shift`+`R`)
 - **Beta: copy to clipboard** — send the finished 40 × 40 badge straight into Discord, Paint or any other app with the button next to Export PNG (`Ctrl`+`Shift`+`C`)
 - **Beta: Performance mode** in Settings — the finished canvas is cached, a repaint copies just the  visible area and a stroke patches only the cells it crosses: roughly a tenth of the painting per mouse move, lower CPU load and less input lag
-- **28 colour palette** plus a full custom colour picker
+- **28 colour palette** plus the app's own colour sheet (beta) — saturation/value square, hue rail, hex value and live R/G/B for any colour, drawn in whichever theme is active
 - **Undo / redo** (80 steps), right-click always erases
 - **Import** PNG / GIF / JPG / BMP (button or drag the file onto the window) — auto-scaled to 40 × 40
 - **Export PNG** at exactly 40 × 40 with a transparent background
@@ -98,6 +98,18 @@ start.
 
 ![The beta custom theme designer with saved presets](docs/theme-designer.png)
 
+### Colour picker (beta)
+
+The palette row's round chip and its **+** button open the app's own colour sheet instead of
+Windows' colour dialog: one saturation/value square with the hue rail beside it, a hex field with
+a live R/G/B readout, a before/after pair and the 28-colour palette below. Every tone is drawn
+from the active palette, so the sheet looks the same family as the app in Dark, Light, Navy and
+Custom. Picking previews on the badge behind it, **Use colour** commits, and **Cancel**, `Esc`,
+the close button or a click on **BEFORE** puts the previous colour back. The square and the rail
+are the same painters the theme designer uses.
+
+![The colour sheet in the dark theme](docs/colour-picker.png)
+
 ![The whole editor in a custom palette, including the canvas](docs/preview-custom.png)
 
 ## Changelog
@@ -111,6 +123,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.21 | 27 Oct 2026 | **Beta:** the app's own colour sheet replaces Windows' colour dialog — saturation/value square, hue rail, hex and R/G/B, before/after and the palette, themed for every palette and previewing live on the badge |
 | 1.4.5-beta.20 | 27 Oct 2026 | **Beta:** Settings and Changelog fade in and out over the editor (150 ms in, 120 ms out, eased); a close during the fade-in continues from the current opacity |
 | 1.4.5-beta.19 | 27 Oct 2026 | **Beta:** release-pipeline build — the beta.18 app compiled, self-tested and packaged by the tag workflow, so the download matches the tag |
 | 1.4.5-beta.18 | 27 Oct 2026 | **Beta:** the Changelog sheet opens fully painted — entries render on demand and the opening screen is ready before the window appears (first paint about 16 ms instead of ~1 s) |
@@ -291,6 +304,8 @@ build.bat
 "dist\Habbo Badge Creator Beta.exe" --shot light.png --theme light # render in the light theme
 "dist\Habbo Badge Creator Beta.exe" --shot-settings sheet.png       # render the settings sheet
 "dist\Habbo Badge Creator Beta.exe" --shot-changelog notes.png      # render the release notes
+"dist\Habbo Badge Creator Beta.exe" --picker                        # open the colour sheet (live run)
+"dist\Habbo Badge Creator Beta.exe" --shot-picker colour.png         # render the colour sheet
 "dist\Habbo Badge Creator Beta.exe" --scale 1.5 --nosplash          # render at 150% layout scale
 "dist\Habbo Badge Creator Beta.exe" --nosplash                     # skip the startup splash
 ```
@@ -298,7 +313,8 @@ build.bat
 `--selftest` covers the pixel document (set, line, mirror, flood fill, undo/redo, PNG
 import scaling), the badge library (save, list, metadata round trip, delete, draft),
 the settings round trip and the Discord IPC handshake/activity frames against a local
-pipe. It never touches your saved badges.
+pipe, plus the colour maths and the two painters the colour sheet and the theme designer
+share. It never touches your saved badges.
 
 ## License
 

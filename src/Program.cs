@@ -78,7 +78,7 @@ namespace HabboBadgeCreator
                             Has(args, "--layers-demo") || Has(args, "--shot-designer") ||
                             Has(args, "--tip") || Has(args, "--changelog") || Has(args, "--settings") ||
                             Has(args, "--layer-tip") || Has(args, "--shot-settings") || Has(args, "--shot-changelog") ||
-                            Has(args, "--shot-splash");
+                            Has(args, "--shot-splash") || Has(args, "--shot-picker") || Has(args, "--picker");
             if (!noSplash) Application.Run(new SplashForm());
 
             string splashShot = Value(args, "--shot-splash");
@@ -105,6 +105,12 @@ namespace HabboBadgeCreator
             if (notesShot != null)
             {
                 ShotChangelog(notesShot);
+                return;
+            }
+            string pickerShot = Value(args, "--shot-picker");
+            if (pickerShot != null)
+            {
+                ShotPicker(pickerShot);
                 return;
             }
 
@@ -163,6 +169,18 @@ namespace HabboBadgeCreator
                     form.DebugChangelog();
                 };
                 changelog.Start();
+            }
+            if (Has(args, "--picker"))
+            {
+                System.Windows.Forms.Timer picker = new System.Windows.Forms.Timer();
+                picker.Interval = 800;
+                picker.Tick += delegate
+                {
+                    picker.Stop();
+                    picker.Dispose();
+                    form.DebugPicker();
+                };
+                picker.Start();
             }
             Application.Run(form);
         }
@@ -298,6 +316,30 @@ namespace HabboBadgeCreator
             T.Apply(prefs);
             L.De = ForceLang == "de" || (ForceLang != "en" && prefs.Lang == "de");
             using (ChangelogForm f = new ChangelogForm())
+            {
+                f.StartPosition = FormStartPosition.Manual;
+                f.Location = new Point(40, 40);
+                f.Show();
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(300);
+                Application.DoEvents();
+                using (Bitmap b = new Bitmap(f.Width, f.Height))
+                {
+                    f.DrawToBitmap(b, new Rectangle(0, 0, f.Width, f.Height));
+                    b.Save(path, ImageFormat.Png);
+                }
+                f.Close();
+            }
+        }
+
+        /// <summary>Renders the colour sheet to a PNG for visual checks; follows --theme.</summary>
+        static void ShotPicker(string path)
+        {
+            AppSettings prefs = Store.LoadSettings();
+            ApplyForced(prefs);
+            T.Apply(prefs);
+            L.De = ForceLang == "de" || (ForceLang != "en" && prefs.Lang == "de");
+            using (ColorSheetForm f = new ColorSheetForm(Color.FromArgb(255, 245, 166, 35)))
             {
                 f.StartPosition = FormStartPosition.Manual;
                 f.Location = new Point(40, 40);
@@ -668,6 +710,7 @@ namespace HabboBadgeCreator
             CheckSettings();
             CheckThemePalette();
             CheckCustomTheme();
+            CheckPickers();
             CheckDiscord();
             CheckPortal();
 
@@ -838,6 +881,60 @@ namespace HabboBadgeCreator
                     else if (File.Exists(path)) File.Delete(path);
                 }
                 catch { }
+            }
+        }
+
+        /// <summary>Covers the colour maths and the two painters the pickers share.</summary>
+        static void CheckPickers()
+        {
+            Color[] probes = new Color[]
+            {
+                Color.FromArgb(255, 17, 226, 226), Color.FromArgb(255, 245, 166, 35),
+                Color.FromArgb(255, 90, 30, 120), Color.FromArgb(255, 255, 255, 255),
+                Color.FromArgb(255, 12, 15, 19)
+            };
+            bool round = true;
+            foreach (Color c in probes)
+            {
+                float ph, ps, pv;
+                T.RgbToHsv(c, out ph, out ps, out pv);
+                Color back = T.HsvToRgb(ph, ps, pv);
+                if (Math.Abs(back.R - c.R) > 1 || Math.Abs(back.G - c.G) > 1 || Math.Abs(back.B - c.B) > 1)
+                    round = false;
+            }
+            Check("hsv round-trip keeps every probe colour", round);
+            Check("hsv corner hues land exactly on green and blue",
+                T.HsvToRgb(120f, 1f, 1f).ToArgb() == Color.FromArgb(255, 0, 255, 0).ToArgb() &&
+                T.HsvToRgb(240f, 1f, 1f).ToArgb() == Color.FromArgb(255, 0, 0, 255).ToArgb());
+            Check("a grey keeps no hue of its own",
+                T.HsvToRgb(210f, 0f, 1f).ToArgb() == Color.White.ToArgb());
+
+            // the square and the rail are the shared painters behind the colour sheet and designer
+            using (Bitmap bmp = new Bitmap(120, 100))
+            {
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.Clear(Color.FromArgb(255, 5, 5, 5));
+                    // the knob only marks sat/val, so the two are parked in the middle to keep the
+                    // corners of the gradient clean for sampling
+                    T.PaintSvSquare(g, new RectangleF(0, 0, 100, 100), 0f, 0.5f, 0.5f, Color.Red);
+                    T.PaintHueRail(g, new RectangleF(104, 0, 14, 100), 90f);
+                }
+                // left edge is saturation 0, the right edge the pure hue, and value 0 flattens
+                // the bottom row to black
+                Color svWhite = bmp.GetPixel(6, 6);
+                Color svHue = bmp.GetPixel(96, 6);
+                Color svDark = bmp.GetPixel(6, 96);
+                Color railTop = bmp.GetPixel(111, 10);
+                Color railMid = bmp.GetPixel(111, 50);
+                Check("sv square paints white at saturation 0 and the hue at saturation 1",
+                    svWhite.R > 220 && svWhite.G > 220 && svWhite.B > 220 &&
+                    svHue.R > 200 && svHue.G < 60 && svHue.B < 60);
+                Check("sv square reaches black at the bottom",
+                    svDark.R < 60 && svDark.G < 60 && svDark.B < 60);
+                Check("hue rail runs warm at the top and cool in the middle",
+                    railTop.R > railTop.G && railTop.R > railTop.B &&
+                    railMid.B > railMid.R && railMid.G > railMid.R);
             }
         }
 

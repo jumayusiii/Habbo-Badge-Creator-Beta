@@ -9,13 +9,34 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.20";
-        public const string Build = "2026-10-27.20";
+        public const string Version = "1.4.5-beta.21";
+        public const string Build = "2026-10-27.21";
         public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.21", "27 Oct 2026",
+                "Themed colour picker",
+                "Farbwähler im App-Design",
+                new string[]
+                {
+                    "Windows' colour dialog is gone — it was the one window that ignored the app, coming up in pale system grey with a stock colour wheel no matter which palette was active. Colours are now picked in the app's own sheet (beta).",
+                    "The sheet is built like the custom theme designer: one saturation/value square with the hue rail beside it, a hex field, a live R/G/B readout, a before/after pair and the editor's palette. Every tone comes from the active palette, so it fits Dark, Light, Navy and Custom.",
+                    "Picking previews on the badge behind the sheet, so a colour can be judged in place: the colour chip, the paint colour and the palette selection follow the square while it is dragged. Use colour commits it; Cancel, Esc, the close button or a click on BEFORE puts the previous colour back.",
+                    "The square and the hue rail now come from one shared painter that the colour sheet and the theme designer both call, so the two pickers can no longer drift apart. A render of the theme designer before and after the move is pixel-identical.",
+                    "Greys keep the hue you picked instead of snapping the rail back to red, the hex field parses on Enter or when it loses focus, and the sheet fades in and out like Settings and Changelog.",
+                    "Six new self-test checks cover the colour maths (HSV round trip, corner hues, greys) and both painters (white at saturation 0, the pure hue at saturation 1, black along the bottom, a warm-to-cool rail)."
+                },
+                new string[]
+                {
+                    "Der Windows-Farbdialog ist weg – er war das einzige Fenster, das die App ignorierte: helles Systemgrau mit Standard-Farbrad, egal welches Design aktiv war. Farben werden jetzt im eigenen Fenster der App gewählt (Beta).",
+                    "Das Fenster ist wie der Design-Designer aufgebaut: ein Sättigungs-/Helligkeitsquadrat mit Farbtonleiste daneben, Hex-Feld, Live-R/G/B-Anzeige, Vorher/Nachher-Felder und die Palette des Editors. Alle Töne stammen aus der aktiven Palette und passen damit zu Dunkel, Hell, Marineblau und Eigenes.",
+                    "Die Auswahl erscheint live auf dem Badge dahinter, eine Farbe lässt sich also direkt beurteilen: Farbfeld, Malfarbe und Palettenauswahl folgen dem Quadrat schon beim Ziehen. „Farbe übernehmen“ setzt sie ein; Abbrechen, Esc, das Schließen-Kreuz oder ein Klick auf VORHER stellen die vorherige Farbe wieder her.",
+                    "Quadrat und Farbtonleiste stammen jetzt aus einer gemeinsamen Zeichenroutine, die Farbwähler und Design-Designer beide aufrufen – die beiden Wähler können nicht mehr auseinanderlaufen. Ein Bild des Designers vor und nach dem Verschieben ist pixelgleich.",
+                    "Grautöne behalten den gewählten Farbton, statt die Leiste auf Rot zurückzusetzen; das Hex-Feld liest bei Enter oder Fokusverlust, und das Fenster blendet sich wie Einstellungen und Änderungen ein und aus.",
+                    "Sechs neue Selbsttest-Prüfungen decken die Farbmathematik (HSV-Hin und Rückweg, Eckfarbtöne, Graustufen) und beide Zeichenroutinen ab (Weiß bei Sättigung 0, reiner Farbton bei Sättigung 1, Schwarz am unteren Rand, warme bis kühle Leiste)."
+                }),
             new ReleaseNote("1.4.5-beta.20", "27 Oct 2026",
                 "Settings and Changelog fade in and out",
                 "Einstellungen und Änderungen blenden weich ein und aus",

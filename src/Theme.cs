@@ -303,6 +303,45 @@ namespace HabboBadgeCreator
             return (0.2126f * c.R + 0.7152f * c.G + 0.0722f * c.B) / 255f;
         }
 
+        // Colour maths and the two picker painters live here rather than inside a sheet: the
+        // colour sheet and the theme designer share them, so the two pickers cannot drift apart.
+
+        /// <summary>HSV to an opaque colour. Hue 0–360, saturation and value 0–1.</summary>
+        public static Color HsvToRgb(float h, float s, float v)
+        {
+            h = ((h % 360f) + 360f) % 360f;
+            float c = v * s;
+            float x = c * (1f - Math.Abs((h / 60f) % 2f - 1f));
+            float m = v - c;
+            float r, g, b;
+            if (h < 60f) { r = c; g = x; b = 0f; }
+            else if (h < 120f) { r = x; g = c; b = 0f; }
+            else if (h < 180f) { r = 0f; g = c; b = x; }
+            else if (h < 240f) { r = 0f; g = x; b = c; }
+            else if (h < 300f) { r = x; g = 0f; b = c; }
+            else { r = c; g = 0f; b = x; }
+            return Color.FromArgb(255,
+                (int)Math.Round((r + m) * 255f),
+                (int)Math.Round((g + m) * 255f),
+                (int)Math.Round((b + m) * 255f));
+        }
+
+        /// <summary>The hue, saturation and value behind a colour. Hue 0–360, the rest 0–1.</summary>
+        public static void RgbToHsv(Color c, out float h, out float s, out float v)
+        {
+            float r = c.R / 255f, g = c.G / 255f, b = c.B / 255f;
+            float max = Math.Max(r, Math.Max(g, b));
+            float min = Math.Min(r, Math.Min(g, b));
+            float d = max - min;
+            v = max;
+            s = max <= 0f ? 0f : d / max;
+            if (d <= 0f) { h = 0f; return; }
+            if (max == r) h = 60f * (((g - b) / d) % 6f);
+            else if (max == g) h = 60f * (((b - r) / d) + 2f);
+            else h = 60f * (((r - g) / d) + 4f);
+            if (h < 0f) h += 360f;
+        }
+
         /// <summary>Window backdrop. One flat tone in every palette.</summary>
         public static void PaintBackdrop(Graphics g, Rectangle r)
         {
@@ -492,6 +531,79 @@ namespace HabboBadgeCreator
                 g.FillRectangle(CheckBrush, big);
             }
             g.Restore(st);
+        }
+
+        /// <summary>
+        /// Saturation/value square, as used by every picker in the app: a hue fill, a white wash
+        /// running right and a black wash running down, with the crosshair on the picked spot.
+        /// </summary>
+        public static void PaintSvSquare(Graphics g, RectangleF r, float hue, float sat, float val, Color current)
+        {
+            float rad = F(8f);
+            using (GraphicsPath clip = Round(r, rad))
+            {
+                GraphicsState st = g.Save();
+                g.SetClip(clip, CombineMode.Intersect);
+                using (SolidBrush hueFill = new SolidBrush(HsvToRgb(hue, 1f, 1f)))
+                    g.FillRectangle(hueFill, r);
+                using (LinearGradientBrush white = new LinearGradientBrush(
+                    new RectangleF(r.X, r.Y, r.Width + 1f, r.Height), Color.White, Color.FromArgb(255, 255, 255, 255), 0f))
+                {
+                    white.InterpolationColors = new ColorBlend(2)
+                    {
+                        Colors = new[] { Color.White, Color.FromArgb(0, 255, 255, 255) },
+                        Positions = new[] { 0f, 1f }
+                    };
+                    g.FillRectangle(white, r);
+                }
+                using (LinearGradientBrush black = new LinearGradientBrush(
+                    new RectangleF(r.X, r.Y, r.Width, r.Height + 1f), Color.FromArgb(0, 0, 0, 0), Color.Black, 90f))
+                    g.FillRectangle(black, r);
+                g.Restore(st);
+            }
+            StrokeRound(g, new RectangleF(r.X + 0.5f, r.Y + 0.5f, r.Width - 1f, r.Height - 1f), rad, Stroke, 1f);
+
+            float kx = r.X + sat * r.Width;
+            float ky = r.Y + (1f - val) * r.Height;
+            using (SolidBrush knob = new SolidBrush(current)) g.FillEllipse(knob, kx - P(6), ky - P(6), P(12), P(12));
+            using (Pen ring = new Pen(Color.White, 2f)) g.DrawEllipse(ring, kx - P(6), ky - P(6), P(12), P(12));
+            using (Pen dark = new Pen(Color.FromArgb(120, 0, 0, 0), 1f)) g.DrawEllipse(dark, kx - P(7), ky - P(7), P(14), P(14));
+        }
+
+        /// <summary>
+        /// Vertical hue rail for the pickers: seven evenly spaced stops from red back to red,
+        /// with the marker drawn across the rail at the picked hue.
+        /// </summary>
+        public static void PaintHueRail(Graphics g, RectangleF r, float hue)
+        {
+            float rad = F(9f);
+            using (GraphicsPath clip = Round(r, rad))
+            {
+                GraphicsState st = g.Save();
+                g.SetClip(clip, CombineMode.Intersect);
+                using (LinearGradientBrush lb = new LinearGradientBrush(
+                    new RectangleF(r.X, r.Y, r.Width, r.Height + 1f), Color.Red, Color.Red, 90f))
+                {
+                    lb.InterpolationColors = new ColorBlend(7)
+                    {
+                        Colors = new[]
+                        {
+                            Color.FromArgb(255, 255, 0, 0), Color.FromArgb(255, 255, 255, 0),
+                            Color.FromArgb(255, 0, 255, 0), Color.FromArgb(255, 0, 255, 255),
+                            Color.FromArgb(255, 0, 0, 255), Color.FromArgb(255, 255, 0, 255),
+                            Color.FromArgb(255, 255, 0, 0)
+                        },
+                        Positions = new[] { 0f, 0.17f, 0.33f, 0.5f, 0.67f, 0.83f, 1f }
+                    };
+                    g.FillRectangle(lb, r);
+                }
+                g.Restore(st);
+            }
+            StrokeRound(g, new RectangleF(r.X + 0.5f, r.Y + 0.5f, r.Width - 1f, r.Height - 1f), rad, Stroke, 1f);
+
+            float hy = r.Y + hue / 360f * r.Height;
+            using (Pen mark = new Pen(Color.White, 2.4f))
+                g.DrawLine(mark, r.X - P(2), hy, r.Right + P(2), hy);
         }
 
         public static void HLine(Graphics g, int x1, int x2, int y, Color c)

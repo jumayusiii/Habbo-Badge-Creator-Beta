@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.20` |
+| Version | `1.4.5` | `1.4.5-beta.21` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -44,6 +44,19 @@ Both builds can run at the same time. They never read or write each other's gall
   recall them with one click, drag chips into a different order and double-click one to rename it.
 - **Extra canvas tools** — centre / thirds / quarter guides (`C`), horizontal and vertical flip
   (`Shift+H` / `Shift+V`), and arrow-key nudging of the active layer.
+- **Themed colour picker** — the round chip and the **+** button next to the palette open the
+  app's own colour sheet: a saturation/value square with the hue rail, hex field, live R/G/B
+  readout, before/after swatches and the palette, drawn in Dark, Light, Navy and Custom.
+  Picking previews on the badge; **Cancel** puts the previous colour back.
+
+### New in 1.4.5-beta.21
+
+Windows' colour dialog is gone. Colours are picked in the app's own sheet now — the same
+saturation/value square and hue rail the custom theme designer uses, plus a hex field, a live
+R/G/B readout, before/after swatches and the 28-colour palette, all drawn in the active palette
+and previewing live on the badge behind the sheet. The square and the rail moved into one shared
+painter, so the two pickers cannot drift apart. See the
+[full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.20
 

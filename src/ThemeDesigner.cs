@@ -262,7 +262,7 @@ namespace HabboBadgeCreator
         void SyncHsv()
         {
             float h, s, v;
-            RgbToHsv(Current, out h, out s, out v);
+            T.RgbToHsv(Current, out h, out s, out v);
             hue = h; sat = s; val = v;
             if (hex != null) hex.Value = AppSettings.ToHex(Current);
         }
@@ -595,14 +595,14 @@ namespace HabboBadgeCreator
             RectangleF r = SvRect;
             sat = Math.Max(0f, Math.Min(1f, (p.X - r.X) / r.Width));
             val = 1f - Math.Max(0f, Math.Min(1f, (p.Y - r.Y) / r.Height));
-            SetCurrent(HsvToRgb(hue, sat, val));
+            SetCurrent(T.HsvToRgb(hue, sat, val));
         }
 
         void PickHue(Point p)
         {
             RectangleF r = HueRect;
             hue = Math.Max(0f, Math.Min(1f, (p.Y - r.Y) / r.Height)) * 360f;
-            SetCurrent(HsvToRgb(hue, sat, val));
+            SetCurrent(T.HsvToRgb(hue, sat, val));
         }
 
         // ------------------------------------------------------------- paint
@@ -674,66 +674,10 @@ namespace HabboBadgeCreator
 
         void DrawPicker(Graphics g)
         {
-            RectangleF sv = SvRect;
-            float rad = T.F(8f);
-            using (GraphicsPath clip = T.Round(sv, rad))
-            {
-                GraphicsState st = g.Save();
-                g.SetClip(clip, CombineMode.Intersect);
-                using (SolidBrush hueFill = new SolidBrush(HsvToRgb(hue, 1f, 1f)))
-                    g.FillRectangle(hueFill, sv);
-                using (LinearGradientBrush white = new LinearGradientBrush(
-                    new RectangleF(sv.X, sv.Y, sv.Width + 1f, sv.Height), Color.White, Color.FromArgb(255, 255, 255, 255), 0f))
-                {
-                    white.InterpolationColors = new ColorBlend(2)
-                    {
-                        Colors = new[] { Color.White, Color.FromArgb(0, 255, 255, 255) },
-                        Positions = new[] { 0f, 1f }
-                    };
-                    g.FillRectangle(white, sv);
-                }
-                using (LinearGradientBrush black = new LinearGradientBrush(
-                    new RectangleF(sv.X, sv.Y, sv.Width, sv.Height + 1f), Color.FromArgb(0, 0, 0, 0), Color.Black, 90f))
-                    g.FillRectangle(black, sv);
-                g.Restore(st);
-            }
-            T.StrokeRound(g, new RectangleF(sv.X + 0.5f, sv.Y + 0.5f, sv.Width - 1f, sv.Height - 1f), rad, T.Stroke, 1f);
-
-            float kx = sv.X + sat * sv.Width;
-            float ky = sv.Y + (1f - val) * sv.Height;
-            using (SolidBrush knob = new SolidBrush(Current)) g.FillEllipse(knob, kx - T.P(6), ky - T.P(6), T.P(12), T.P(12));
-            using (Pen ring = new Pen(Color.White, 2f)) g.DrawEllipse(ring, kx - T.P(6), ky - T.P(6), T.P(12), T.P(12));
-            using (Pen dark = new Pen(Color.FromArgb(120, 0, 0, 0), 1f)) g.DrawEllipse(dark, kx - T.P(7), ky - T.P(7), T.P(14), T.P(14));
-
-            // hue rail
-            RectangleF hr = HueRect;
-            float hrRad = T.F(9f);
-            using (GraphicsPath clip = T.Round(hr, hrRad))
-            {
-                GraphicsState st = g.Save();
-                g.SetClip(clip, CombineMode.Intersect);
-                using (LinearGradientBrush lb = new LinearGradientBrush(
-                    new RectangleF(hr.X, hr.Y, hr.Width, hr.Height + 1f), Color.Red, Color.Red, 90f))
-                {
-                    lb.InterpolationColors = new ColorBlend(7)
-                    {
-                        Colors = new[]
-                        {
-                            Color.FromArgb(255, 255, 0, 0), Color.FromArgb(255, 255, 255, 0),
-                            Color.FromArgb(255, 0, 255, 0), Color.FromArgb(255, 0, 255, 255),
-                            Color.FromArgb(255, 0, 0, 255), Color.FromArgb(255, 255, 0, 255),
-                            Color.FromArgb(255, 255, 0, 0)
-                        },
-                        Positions = new[] { 0f, 0.17f, 0.33f, 0.5f, 0.67f, 0.83f, 1f }
-                    };
-                    g.FillRectangle(lb, hr);
-                }
-                g.Restore(st);
-            }
-            T.StrokeRound(g, new RectangleF(hr.X + 0.5f, hr.Y + 0.5f, hr.Width - 1f, hr.Height - 1f), hrRad, T.Stroke, 1f);
-            float hy = hr.Y + hue / 360f * hr.Height;
-            using (Pen mark = new Pen(Color.White, 2.4f))
-                g.DrawLine(mark, hr.X - T.P(2), hy, hr.Right + T.P(2), hy);
+            // The square and the rail come from the app-wide painters, shared with the colour
+            // sheet: one definition, so the two pickers can never drift apart.
+            T.PaintSvSquare(g, SvRect, hue, sat, val, Current);
+            T.PaintHueRail(g, HueRect, hue);
 
             T.Str(g, L.T("HEX", "HEX"), T.FLabel, T.Dim,
                 new Rectangle(Pad + T.P(382), T.P(182), T.P(134), T.P(14)), T.FL);
@@ -868,41 +812,6 @@ namespace HabboBadgeCreator
             float cs = T.F(8f);
             RectangleF x = new RectangleF(r.Right - T.P(16) - cs, r.Y + (r.Height - cs) / 2f, cs, cs);
             T.Icon(g, "close", x, hot ? T.Text : T.Dim);
-        }
-
-        // ------------------------------------------------------------- helpers
-        static Color HsvToRgb(float h, float s, float v)
-        {
-            h = ((h % 360f) + 360f) % 360f;
-            float c = v * s;
-            float x = c * (1f - Math.Abs((h / 60f) % 2f - 1f));
-            float m = v - c;
-            float r, g, b;
-            if (h < 60f) { r = c; g = x; b = 0f; }
-            else if (h < 120f) { r = x; g = c; b = 0f; }
-            else if (h < 180f) { r = 0f; g = c; b = x; }
-            else if (h < 240f) { r = 0f; g = x; b = c; }
-            else if (h < 300f) { r = x; g = 0f; b = c; }
-            else { r = c; g = 0f; b = x; }
-            return Color.FromArgb(255,
-                (int)Math.Round((r + m) * 255f),
-                (int)Math.Round((g + m) * 255f),
-                (int)Math.Round((b + m) * 255f));
-        }
-
-        static void RgbToHsv(Color c, out float h, out float s, out float v)
-        {
-            float r = c.R / 255f, g = c.G / 255f, b = c.B / 255f;
-            float max = Math.Max(r, Math.Max(g, b));
-            float min = Math.Min(r, Math.Min(g, b));
-            float d = max - min;
-            v = max;
-            s = max <= 0f ? 0f : d / max;
-            if (d <= 0f) { h = 0f; return; }
-            if (max == r) h = 60f * (((g - b) / d) % 6f);
-            else if (max == g) h = 60f * (((b - r) / d) + 2f);
-            else h = 60f * (((r - g) / d) + 4f);
-            if (h < 0f) h += 360f;
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]

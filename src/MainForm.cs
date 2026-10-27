@@ -51,7 +51,7 @@ namespace HabboBadgeCreator
         Rectangle lastCardL, lastCardR1, lastCardR2;
         bool compact, galleryCollapsed, lastCollapsed;
 
-        static readonly int[] Palette = new int[]
+        internal static readonly int[] Palette = new int[]
         {
             0xFFFFFF, 0xDCE4EE, 0x9AA9BA, 0x56677A, 0x2C3746, 0x0A0E14,
             0xFFEFB8, 0xFFD65C, 0xF5A623, 0xD9772A, 0x9E3B1E, 0x5E2312,
@@ -885,21 +885,36 @@ namespace HabboBadgeCreator
 
         void SetColor(Color c)
         {
+            ColorPreview(c);
+            if (tool == 3) SetTool(0);
+        }
+
+        /// <summary>
+        /// Shows a colour without committing it: the chip and the canvas follow the colour sheet
+        /// while it is open, and the active tool stays where it is (committing through SetColor
+        /// is what leaves the eyedropper).
+        /// </summary>
+        void ColorPreview(Color c)
+        {
             drawColor = Color.FromArgb(255, c.R, c.G, c.B);
             canvas.DrawColor = drawColor;
             colorChip.Value = drawColor;
             colorChip.Invalidate();
-            if (tool == 3) SetTool(0);
         }
 
+        /// <summary>
+        /// Opens the app's own colour sheet (beta) instead of Windows' colour dialog, which came
+        /// up in a pale grey that ignored the palette entirely. Picking previews live on the
+        /// badge; Cancel puts the colour the sheet opened with back.
+        /// </summary>
         void PickCustomColor()
         {
-            using (ColorDialog dlg = new ColorDialog())
+            Color opened = drawColor;
+            using (ColorSheetForm sheet = new ColorSheetForm(drawColor, ColorPreview))
             {
-                dlg.Color = drawColor;
-                dlg.FullOpen = true;
-                dlg.AnyColor = true;
-                if (dlg.ShowDialog(this) == DialogResult.OK) SetColor(dlg.Color);
+                sheet.ShowDialog(this);
+                if (sheet.Saved) SetColor(sheet.Result);
+                else ColorPreview(opened);
             }
         }
 
@@ -1064,6 +1079,12 @@ namespace HabboBadgeCreator
         public void DebugChangelog()
         {
             using (ChangelogForm f = new ChangelogForm()) f.ShowDialog(this);
+        }
+
+        /// <summary>Opens the colour sheet for screenshots and click-throughs.</summary>
+        public void DebugPicker()
+        {
+            PickCustomColor();
         }
 
         int BtnWidth(FlatBtn b, int min)
