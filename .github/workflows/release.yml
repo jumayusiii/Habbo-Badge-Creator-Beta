@@ -1,0 +1,289 @@
+name: Release beta
+
+# Builds the app with the C# compiler that ships with Windows, runs the app's own
+# self-test and publishes the packages. Pushing a version tag (v1.4.5-beta.18)
+# runs the whole chain; the manual trigger builds and tests without publishing
+# unless "publish" is ticked.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build (e.g. v1.4.5-beta.17)'
+        required: true
+        type: string
+      publish:
+        description: 'Publish the release as well'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, self-test and publish
+    runs-on: windows-latest
+    env:
+      BUILD_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve the version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:BUILD_REF
+          if ($tag -notmatch '^v(?<version>\d[0-9A-Za-z.\-]*)$') {
+            throw "Tag '$tag' is not a version tag (expected something like v1.4.5-beta.17)."
+          }
+          $version = $Matches['version']
+
+          $constant = Select-String -Path 'src/Changelog.cs' -Pattern 'public const string Version = "(?<version>[^"]+)"'
+          if (-not $constant) { throw 'Could not find AppInfo.Version in src/Changelog.cs.' }
+          $appVersion = $constant.Matches[0].Groups['version'].Value
+          if ($appVersion -ne $version) {
+            throw "Tag '$tag' does not match AppInfo.Version '$appVersion' in src/Changelog.cs. Bump the version and add a release note before tagging."
+          }
+
+          $prerelease = $version.Contains('-')
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$($prerelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          Write-Host "Tag: $tag"
+          Write-Host "Version: $version"
+          Write-Host "Pre-release: $prerelease"
+
+      - name: Check the build toolchain
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          if (-not (Test-Path $csc)) { throw 'The .NET Framework C# compiler is missing on this runner.' }
+          Write-Host "csc: $csc"
+          Write-Host "compiler: $((Get-Item $csc).VersionInfo.ProductVersion)"
+          git --version
+          gh --version | Select-Object -First 1
+
+      - name: Build the executable
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmd /c build.bat
+          if ($LASTEXITCODE -ne 0) { throw "build.bat failed with exit code $LASTEXITCODE." }
+          $exe = 'dist/Habbo Badge Creator Beta.exe'
+          if (-not (Test-Path $exe)) { throw "build.bat did not produce $exe." }
+          $info = (Get-Item $exe).VersionInfo
+          Write-Host ("Built {0}: {1:N0} bytes, product version {2}" -f $info.FileDescription, (Get-Item $exe).Length, $info.ProductVersion)
+          if ($info.ProductVersion -ne $env:VERSION) {
+            throw "The built executable reports '$($info.ProductVersion)' but the tag says '$env:VERSION'."
+          }
+
+      - name: Run the self-test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $env:RUNNER_TEMP 'selftest.txt'
+          & 'dist/Habbo Badge Creator Beta.exe' --selftest $log
+          $code = $LASTEXITCODE
+          if (-not (Test-Path $log)) { throw "The self-test wrote no log to $log (exit code $code)." }
+
+          $lines = Get-Content $log
+          $lines | ForEach-Object { Write-Host $_ }
+          'Self-test output:' | Add-Content $env:GITHUB_STEP_SUMMARY
+          '```' | Add-Content $env:GITHUB_STEP_SUMMARY
+          $lines | Add-Content $env:GITHUB_STEP_SUMMARY
+          '```' | Add-Content $env:GITHUB_STEP_SUMMARY
+
+          $failures = @($lines | Select-String -SimpleMatch '[fail]').Count
+          $summary = @($lines | Where-Object { $_ -match '\d+ passed, \d+ failed' } | Select-Object -Last 1)
+          Write-Host "Exit code $code, failures $failures, summary '$summary'"
+          if ($code -ne 0 -or $failures -gt 0 -or $summary.Count -eq 0 -or $summary[0] -notmatch ' 0 failed') {
+            throw "The self-test failed: exit code $code, $failures '[fail]' lines, summary '$summary'."
+          }
+
+      - name: Upload the self-test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-log
+          path: ${{ runner.temp }}/selftest.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Package the app, the source and the checksums
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = "dist/pkg/Habbo Badge Creator Beta $env:VERSION"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item 'dist/Habbo Badge Creator Beta.exe' $stage
+          Copy-Item README.md, BETA.md, LICENSE $stage
+          Copy-Item docs $stage -Recurse
+
+          $appZip = "dist/Habbo.Badge.Creator.Beta.$env:VERSION.zip"
+          $srcZip = "dist/Habbo.Badge.Creator.Beta.$env:VERSION.source.zip"
+          Remove-Item $appZip, $srcZip -ErrorAction SilentlyContinue
+
+          # bsdtar ships with Windows and writes proper ZIP entries with forward
+          # slashes; Compress-Archive under Windows PowerShell writes backslashes
+          tar.exe -a -c -f $appZip -C dist/pkg "Habbo Badge Creator Beta $env:VERSION"
+          if ($LASTEXITCODE -ne 0) { throw "tar failed to create $appZip." }
+
+          git archive --format=zip --prefix="Habbo Badge Creator Beta $env:VERSION source/" -o $srcZip $env:BUILD_REF
+          if ($LASTEXITCODE -ne 0) { throw "git archive of $env:BUILD_REF failed." }
+
+          # no spaces in the asset names: GitHub would swap them for dots
+          $lines = foreach ($zip in @($appZip, $srcZip)) {
+            "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant(), (Split-Path -Leaf $zip)
+          }
+          $sums = Join-Path (Resolve-Path 'dist').Path 'SHA256SUMS.txt'
+          [IO.File]::WriteAllText($sums, ($lines -join "`n") + "`n", (New-Object System.Text.UTF8Encoding($false)))
+          Get-Content $sums | Write-Host
+
+          $names = @(tar.exe -tf $appZip)
+          if ($names -notcontains "Habbo Badge Creator Beta $env:VERSION/Habbo Badge Creator Beta.exe") {
+            throw "The app ZIP does not contain the executable at its expected path: $($names -join ', ')"
+          }
+          if (@($names | Where-Object { $_ -like '*\*' }).Count -gt 0) {
+            throw "The app ZIP has entries with backslashes: $($names -join ', ')"
+          }
+          Write-Host "App ZIP: $($names.Count) entries, $((Get-Item $appZip).Length) bytes"
+          Write-Host "Source ZIP: $((Get-Item $srcZip).Length) bytes"
+
+      - name: Compose the release notes
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = $env:GITHUB_REPOSITORY
+
+          $whatsNew = ''
+          $beta = Get-Content BETA.md -Raw
+          $match = [regex]::Match($beta, '(?ms)^### New in ' + [regex]::Escape($env:VERSION) + '\s*?\r?\n+(.*?)(?=^### |^## |\z)')
+          if ($match.Success) { $whatsNew = $match.Groups[1].Value.Trim() }
+          if (-not $whatsNew) {
+            $whatsNew = "See [BETA.md](https://github.com/$repo/blob/main/BETA.md) and the [changelog](https://github.com/$repo#changelog) for what changed in this build."
+          }
+
+          $template = @'
+          **A portable 40 × 40 badge editor for Habbo Hotel.** One `.exe`, no installer, no telemetry — extract the ZIP and run it. The beta has its own executable and its own data folder, so it runs next to the stable app without sharing badges or settings.
+
+          ## New in this build
+
+          __WHATS_NEW__
+
+          ## Downloads
+
+          | File | What it is |
+          | --- | --- |
+          | `Habbo.Badge.Creator.Beta.__VERSION__.zip` | The app: `Habbo Badge Creator Beta.exe`, README, BETA.md, licence and the screenshots |
+          | `Habbo.Badge.Creator.Beta.__VERSION__.source.zip` | The complete source at this tag (`src/*.cs`, `tools/MakeIcon.cs`, build scripts, assets) |
+          | `SHA256SUMS.txt` | SHA-256 of both packages above, under exactly these file names |
+
+          Extract the ZIP anywhere — folder, USB stick, another PC — and run `Habbo Badge Creator Beta.exe`.
+
+          ## Requirements
+
+          - **Windows 10 (1903 or newer) or Windows 11.** .NET Framework 4.8 is part of both, so there is nothing to install.
+          - **No installer, no admin rights.** Around 600 KB on disk, starts instantly.
+          - **Unsigned build:** Windows SmartScreen may ask for confirmation on first launch (**More info → Run anyway**).
+
+          ## Verify your download
+
+          ```
+          certutil -hashfile "Habbo.Badge.Creator.Beta.__VERSION__.zip" SHA256
+          ```
+
+          Compare the output with `SHA256SUMS.txt` from this release.
+
+          ## Where your files live
+
+          ```
+          %APPDATA%\HabboBadgeCreatorBeta\      badges, draft, settings.json
+          ```
+
+          Nothing is uploaded. The only outbound-ish connection is the local Discord IPC pipe while Rich Presence is enabled — it talks to the Discord desktop client, not to a web API.
+
+          ## Known beta limitations
+
+          - Layers are a working aid, not a stored format yet: saving, exporting and the autosaved draft store the flattened badge.
+          - The custom theme designer and its preset format are beta and may still change.
+          - The executable is not code-signed.
+
+          Full feature list: [README.md](https://github.com/__REPO__/blob/main/README.md) · beta notes: [BETA.md](https://github.com/__REPO__/blob/main/BETA.md)
+
+          Found a bug? Please [open an issue](https://github.com/__REPO__/issues) with your Windows version, the version from the **BETA** pill tooltip, what you did and what happened.
+
+          ---
+
+          Habbo Badge Creator is a fan-made tool and is not affiliated with, endorsed by or sponsored by Habbo or Sulake. HABBO and the Habbo logo are trademarks of Sulake Corporation Oy. Copyright © 2026 Jumayusi, all rights reserved — see [LICENSE](https://github.com/__REPO__/blob/main/LICENSE).
+          '@
+
+          $body = $template.Replace('__WHATS_NEW__', $whatsNew).Replace('__VERSION__', $env:VERSION).Replace('__REPO__', $repo)
+          $path = Join-Path (Resolve-Path 'dist').Path 'release-notes.md'
+          [IO.File]::WriteAllText($path, $body, (New-Object System.Text.UTF8Encoding($false)))
+          Get-Content $path | Select-Object -First 8 | ForEach-Object { Write-Host $_ }
+
+      - name: Upload the release assets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: |
+            dist/Habbo.Badge.Creator.Beta.*.zip
+            dist/SHA256SUMS.txt
+            dist/release-notes.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish the release
+        if: env.PUBLISH == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:BUILD_REF
+
+          gh release view $tag 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            throw "A release for $tag already exists. Delete it (gh release delete $tag) before re-running this workflow."
+          }
+
+          $ghArgs = @(
+            'release', 'create', $tag,
+            "dist/Habbo.Badge.Creator.Beta.$env:VERSION.zip",
+            "dist/Habbo.Badge.Creator.Beta.$env:VERSION.source.zip",
+            'dist/SHA256SUMS.txt',
+            '--title', "Habbo Badge Creator Beta $env:VERSION",
+            '--notes-file', 'dist/release-notes.md',
+            '--verify-tag'
+          )
+          if ($env:PRERELEASE -eq 'true') { $ghArgs += '--prerelease' }
+          gh @ghArgs
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE." }
+
+          gh release view $tag --json url,isPrerelease,assets --jq '"Published " + .url, "pre-release: " + (.isPrerelease | tostring), (.assets[] | .name + "  " + (.size | tostring) + " bytes")'
