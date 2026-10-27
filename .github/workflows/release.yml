@@ -191,6 +191,11 @@ jobs:
           $beta = Get-Content BETA.md -Raw
           $match = [regex]::Match($beta, '(?ms)^### New in ' + [regex]::Escape($env:VERSION) + '\s*?\r?\n+(.*?)(?=^### |^## |\z)')
           if ($match.Success) { $whatsNew = $match.Groups[1].Value.Trim() }
+          # the section is written for the repo; on a release page its relative
+          # links (README.md#changelog) would dangle, so point them at the branch
+          if ($whatsNew) {
+            $whatsNew = $whatsNew -replace '\]\((?!https?://)([^)\s]+)\)', ('](https://github.com/' + $repo + '/blob/main/$1)')
+          }
           if (-not $whatsNew) {
             $whatsNew = "See [BETA.md](https://github.com/$repo/blob/main/BETA.md) and the [changelog](https://github.com/$repo#changelog) for what changed in this build."
           }
