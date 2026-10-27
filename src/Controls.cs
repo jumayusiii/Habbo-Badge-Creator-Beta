@@ -1225,10 +1225,22 @@ namespace HabboBadgeCreator
                 blendHot ? T.Segment : T.Card);
             T.StrokeRound(g, new RectangleF(blend.X + 0.5f, blend.Y + 0.5f, blend.Width - 1f, blend.Height - 1f),
                 T.F(6f), blendHot ? T.StrokeHot : T.Stroke, 1f);
-            T.Str(g, L.T("BLEND", "FÜLLMETHODE"), T.FLabel, T.Dim,
-                new Rectangle(blend.X + T.P(8), blend.Y, T.P(52), blend.Height), T.FL);
+            // measured, not a fixed slot: the label has to share the chip with the mode name. German uses
+            // the compact "MODUS" here because "FÜLLMETHODE" needs 90 px of a 144 px chip; the tooltip
+            // and the hint still spell it out.
+            string blendLabel = L.T("BLEND", "MODUS");
+            int labelW = T.Meas(blendLabel, T.FLabel).Width + T.P(10);   // room for the drawn glyph edges
+            int modeRight = blend.Right - T.P(22);
+            int modeMin = T.P(52);
+            if (modeRight - (blend.X + T.P(8) + labelW + T.P(6)) < modeMin)
+            {
+                labelW = Math.Max(T.P(28), modeRight - modeMin - blend.X - T.P(14));
+            }
+            T.StrEll(g, blendLabel, T.FLabel, T.Dim,
+                new Rectangle(blend.X + T.P(8), blend.Y, labelW, blend.Height), T.FL);
+            int modeX = blend.X + T.P(8) + labelW + T.P(6);
             T.StrEll(g, ModeName(Doc.LayerMode(Doc.ActiveLayer)), T.FMicro, T.Text,
-                new Rectangle(blend.X + T.P(54), blend.Y, blend.Width - T.P(78), blend.Height), T.FR);
+                new Rectangle(modeX, blend.Y, Math.Max(T.P(24), modeRight - modeX), blend.Height), T.FR);
             T.Icon(g, "down", new RectangleF(blend.Right - T.P(18), blend.Y + (blend.Height - T.P(10)) / 2f, T.P(10), T.P(10)), T.Dim);
 
             // stack actions

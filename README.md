@@ -133,6 +133,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.24 | 27 Oct 2026 | **Beta:** layout checked at 125 % and 150 % scaling — editor and sheets scale cleanly; fixed the German blend label, which was cut mid-word in the layer panel |
 | 1.4.5-beta.23 | 27 Oct 2026 | **Beta:** fixed badge deletion — the delete sheet's fade-out dropped the confirmed result, so pressing **Delete** closed the sheet but kept the badge; the fade now restores the result before closing |
 | 1.4.5-beta.22 | 27 Oct 2026 | **Beta:** themed delete and message sheets — badge thumbnail, danger button and palette-aware chrome replace Windows' stock message box for badge deletion and import/export errors |
 | 1.4.5-beta.21 | 27 Oct 2026 | **Beta:** the app's own colour sheet replaces Windows' colour dialog — saturation/value square, hue rail, hex and R/G/B, before/after and the palette, themed for every palette and previewing live on the badge |

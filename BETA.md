@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.23` |
+| Version | `1.4.5` | `1.4.5-beta.24` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -50,6 +50,20 @@ Both builds can run at the same time. They never read or write each other's gall
   Picking previews on the badge; **Cancel** puts the previous colour back.
 - **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
   a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.24
+
+Checked at 125 % and 150 % display scaling. The window opens at 1625 × 972 and 1766 × 972 on a
+1920 × 1080 display, and the two columns, canvas, palette, layer panel, badge list and footer all
+follow the larger text without being cut off; Settings, Changelog, the colour sheet and the delete
+sheet fit too. One clipping bug was found and fixed: the layer panel's blend chip drew its label
+into a fixed 52 px slot, so the German label was cut mid-word at every scale. The label is measured
+now and the mode name takes the rest, with the compact **MODUS** on the chip (the tooltip still
+says *Füllmethode*, which needs 90 px of a 144 px chip).
+
+Known limit: the sheets keep their fixed size, so on a display whose working area is shorter than
+the sheet at 150 % — 768 px tall, for example — the Settings sheet would reach past the screen
+edge. See the [full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.23
 

@@ -9,13 +9,32 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.23";
-        public const string Build = "2026-10-27.23";
+        public const string Version = "1.4.5-beta.24";
+        public const string Build = "2026-10-27.24";
         public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.24", "27 Oct 2026",
+                "Layout at 125 % and 150 %",
+                "Layout bei 125 % und 150 %",
+                new string[]
+                {
+                    "Checked the editor and every sheet at 125 % and 150 % scaling: the window opens at 1625 × 972 and 1766 × 972 on a 1920 × 1080 display, the columns, canvas, palette, layer panel, badge list and footer all follow the larger text, and nothing is cut off.",
+                    "Fixed: the layer panel's blend chip drew its label into a fixed 52 px slot, so the German label was cut mid-word at every scale. The label is measured now and the mode name takes the rest of the chip.",
+                    "German uses the compact MODUS on that chip because the full word needs 90 px of a 144 px chip; the tooltip and the hint still spell out Füllmethode.",
+                    "The sheets were checked too: Settings, Changelog, the colour sheet and the delete sheet all fit at 125 % (725 × 825, 800 × 700, 650 × 585) and 150 % (870 × 990, 960 × 840, 780 × 702).",
+                    "Known limit: the sheets keep their fixed size, so on a display whose working area is shorter than the sheet at 150 % (a 768 px tall screen, for example) the Settings sheet would reach past the screen edge."
+                },
+                new string[]
+                {
+                    "Editor und alle Fenster bei 125 % und 150 % geprüft: Das Fenster öffnet mit 1625 × 972 bzw. 1766 × 972 auf einem 1920 × 1080-Bildschirm; Spalten, Zeichenfläche, Palette, Ebenen-Bereich, Badge-Liste und Fußzeile folgen der größeren Schrift, nichts wird abgeschnitten.",
+                    "Behoben: Die Füllmethode-Schaltfläche im Ebenen-Bereich zeichnete ihre Beschriftung in ein festes 52-px-Feld, sodass die deutsche Beschriftung bei jeder Skalierung mitten im Wort abgeschnitten wurde. Die Beschriftung wird jetzt gemessen, der Modusname bekommt den Rest der Schaltfläche.",
+                    "Auf Deutsch steht dort jetzt das kompakte MODUS, weil das volle Wort 90 px einer 144 px breiten Schaltfläche bräuchte; Tooltip und Hinweis nennen weiterhin „Füllmethode“.",
+                    "Auch die Fenster wurden geprüft: Einstellungen, Änderungen, Farbwähler und Löschfenster passen bei 125 % (725 × 825, 800 × 700, 650 × 585) und 150 % (870 × 990, 960 × 840, 780 × 702).",
+                    "Bekannte Grenze: Die Fenster behalten ihre feste Größe, daher würde das Einstellungsfenster auf einem Bildschirm, dessen Arbeitsfläche bei 150 % niedriger ist (etwa 768 px), über den Bildschirmrand hinausreichen."
+                }),
             new ReleaseNote("1.4.5-beta.23", "27 Oct 2026",
                 "Badge deletion works again",
                 "Badge-Löschen funktioniert wieder",
