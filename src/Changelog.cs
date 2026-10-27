@@ -9,13 +9,30 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.22";
-        public const string Build = "2026-10-27.22";
+        public const string Version = "1.4.5-beta.23";
+        public const string Build = "2026-10-27.23";
         public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.23", "27 Oct 2026",
+                "Badge deletion works again",
+                "Badge-Löschen funktioniert wieder",
+                new string[]
+                {
+                    "Fixed: pressing Delete in the delete sheet closed the sheet but deleted nothing. The sheet's fade-out cancels the close that Windows performs when a dialog result is set, and Windows forgets the result in the process, so the sheet reported Cancel and the badge stayed.",
+                    "The fade now records the result the sheet was closing with and restores it before the real close, so Delete deletes and Cancel still cancels. The same applies to Enter; the X and Esc keep cancelling as before.",
+                    "The other sheets are unaffected: Settings, Changelog and the colour sheet never set a dialog result, and they still close as they did.",
+                    "A new self-test check shows a confirming sheet, confirms it and asserts the caller receives OK — it fails without the fix (107 passed, 1 failed) and passes with it (108 passed, 0 failed)."
+                },
+                new string[]
+                {
+                    "Behoben: Ein Klick auf Löschen im Löschfenster schloss das Fenster, löschte aber nichts. Der Ausblend-Effekt bricht das Schließen ab, das Windows beim Setzen eines Dialog-Ergebnisses ausführt – dabei vergisst Windows das Ergebnis, das Fenster meldete Abbrechen und das Badge blieb.",
+                    "Der Effekt merkt sich jetzt das Ergebnis, mit dem das Fenster geschlossen werden soll, und setzt es vor dem eigentlichen Schließen zurück. Damit löscht Löschen wieder, und Abbrechen bricht weiterhin ab. Das gilt auch für Enter; Kreuz und Esc brechen wie bisher ab.",
+                    "Die anderen Fenster sind nicht betroffen: Einstellungen, Änderungen und der Farbwähler setzen kein Dialog-Ergebnis und schließen unverändert.",
+                    "Eine neue Selbsttest-Prüfung öffnet ein Bestätigungsfenster, bestätigt es und prüft, dass der Aufrufer OK erhält – ohne die Korrektur schlägt sie fehl (107 bestanden, 1 fehlgeschlagen), mit ihr besteht sie (108 bestanden, 0 fehlgeschlagen)."
+                }),
             new ReleaseNote("1.4.5-beta.22", "27 Oct 2026",
                 "Themed delete and message sheets",
                 "Lösch- und Meldungsfenster im App-Design",

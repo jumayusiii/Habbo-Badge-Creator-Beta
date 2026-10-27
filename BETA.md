@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.22` |
+| Version | `1.4.5` | `1.4.5-beta.23` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -50,6 +50,16 @@ Both builds can run at the same time. They never read or write each other's gall
   Picking previews on the badge; **Cancel** puts the previous colour back.
 - **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
   a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.23
+
+Badge deletion works again. Pressing **Delete** in the delete sheet closed the sheet but kept the
+badge: the sheet's fade-out cancels the close Windows performs when a dialog result is set, and
+Windows forgets the result on the way, so the sheet reported Cancel and nothing was deleted. The
+fade now records the result the sheet is closing with and restores it before the real close, so
+**Delete** deletes again and **Cancel**, Esc and the X still cancel. The other sheets never set a
+dialog result and close as before. A new self-test check confirms a confirming sheet reports OK
+to its caller (108 passed, 0 failed). See the [full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.22
 

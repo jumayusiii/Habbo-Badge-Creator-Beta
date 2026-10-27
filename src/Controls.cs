@@ -28,6 +28,10 @@ namespace HabboBadgeCreator
             bool closing = false;    // the fade-out is running
             bool finished = false;   // our own Close() at the end of the fade-out
             int span = InMs;
+            // A caller that sets DialogResult closes the sheet through Windows, and cancelling that
+            // close for the fade makes WinForms forget the result (a modal sheet then reports Cancel).
+            // The wanted result is taken here and re-applied before the real close.
+            DialogResult wanted = DialogResult.None;
             float from = 0f, to = 1f;   // the ramp, taken from wherever the sheet is right now
 
             // the window is created transparent, so the first visible frame is the dim first step
@@ -54,6 +58,7 @@ namespace HabboBadgeCreator
                 if (e.CloseReason != CloseReason.None && e.CloseReason != CloseReason.UserClosing) return;
                 if (!sheet.IsHandleCreated || sheet.WindowState == FormWindowState.Minimized) return;
 
+                wanted = sheet.DialogResult;
                 e.Cancel = true;
                 closing = true;
                 from = (float)sheet.Opacity;   // closing mid fade-in continues from there, no pop
@@ -78,6 +83,8 @@ namespace HabboBadgeCreator
                     {
                         timer.Stop();
                         finished = true;
+                        // restore what the caller asked for, so a confirmed sheet reports OK
+                        if (wanted != DialogResult.None && sheet.DialogResult != wanted) sheet.DialogResult = wanted;
                         sheet.Close();   // already invisible at this point, so nothing flashes
                         return;
                     }

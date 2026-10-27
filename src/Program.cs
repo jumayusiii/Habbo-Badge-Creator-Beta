@@ -1023,7 +1023,43 @@ namespace HabboBadgeCreator
                 Check("error sheet grows for wrapped text", f.ClientSize.Height > shortH);
                 Check("error sheet has one action and no cancel", !f.HasCancelAction && !f.HasDangerAction);
             }
+
+            // The fade cancels the close the moment a caller sets DialogResult, so the result has to
+            // survive the fade-out; this is what badge deletion depends on.
+            Check("a confirmed sheet reports OK once its fade-out ends", ConfirmedResult() == DialogResult.OK);
             T.Apply(before);
+        }
+
+        /// <summary>Shows a confirming sheet, confirms it from a timer, and returns what the caller gets.</summary>
+        static DialogResult ConfirmedResult()
+        {
+            DialogResult result = DialogResult.None;
+            using (MessageSheetForm f = new MessageSheetForm(MessageKind.Warning,
+                "Delete badge", "Delete \"Golden Crown\" from your badges?", "This cannot be undone.",
+                "Delete", "Cancel", null, true))
+            {
+                System.Windows.Forms.Timer click = new System.Windows.Forms.Timer();
+                click.Interval = 120;
+                click.Tick += delegate
+                {
+                    click.Stop();
+                    click.Dispose();
+                    f.DialogResult = DialogResult.OK;   // what the delete button's Commit does
+                };
+                // never let a regression hang the self-test
+                System.Windows.Forms.Timer guard = new System.Windows.Forms.Timer();
+                guard.Interval = 3000;
+                guard.Tick += delegate
+                {
+                    guard.Stop();
+                    guard.Dispose();
+                    f.Close();
+                };
+                f.Shown += delegate { click.Start(); guard.Start(); };
+                result = f.ShowDialog();
+                guard.Dispose();
+            }
+            return result;
         }
 
         static void CheckDiscord()
