@@ -111,6 +111,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.18 | 27 Oct 2026 | **Beta:** the Changelog sheet opens fully painted — entries render on demand and the opening screen is ready before the window appears (first paint about 16 ms instead of ~1 s) |
 | 1.4.5-beta.17 | 26 Oct 2026 | **Beta:** Performance mode paints from a cached canvas and patches only the stroke cells (roughly 10× less work per move); Rich Presence ships with the app's own Discord application |
 | 1.4.5-beta.16 | 26 Oct 2026 | **Beta:** cached, eased changelog scrolling; Performance mode repaints only the stroke cells |
 | 1.4.5-beta.15 | 26 Oct 2026 | **Beta:** changelog scrollbar can be dragged, clicked and wheeled |

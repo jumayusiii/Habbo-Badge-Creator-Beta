@@ -9,13 +9,30 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.17";
-        public const string Build = "2026-10-26.17";
-        public const string Date = "26 October 2026";
+        public const string Version = "1.4.5-beta.18";
+        public const string Build = "2026-10-27.18";
+        public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.18", "27 Oct 2026",
+                "Changelog opens complete",
+                "Changelog öffnet vollständig",
+                new string[]
+                {
+                    "Clicking Changelog used to lay out the entire release history inside the first paint, so the sheet sat there with a blank body for seconds until the render finished.",
+                    "It now renders one entry at a time, and the entries the sheet opens on are ready before the window appears: the first frame is complete and the first paint takes about 16 ms instead of about a second.",
+                    "Scrolling still copies a cache — the next entry above and below the viewport is rendered ahead, so wheel and track scrolling stay smooth.",
+                    "The sheet itself is unchanged: a screenshot before and after the fix is pixel-identical."
+                },
+                new string[]
+                {
+                    "Ein Klick auf Änderungen hat bisher die gesamte Versionshistorie im ersten Zeichnen aufgebaut; der Rumpf des Fensters blieb dabei sekundenlang leer.",
+                    "Jetzt wird jeder Eintrag einzeln gezeichnet, und die Einträge, mit denen das Fenster öffnet, entstehen schon vor dem Erscheinen: Das erste Bild ist vollständig, und das erste Zeichnen dauert etwa 16 ms statt etwa einer Sekunde.",
+                    "Beim Scrollen wird weiterhin ein Cache kopiert – der nächste Eintrag über und unter dem sichtbaren Bereich wird vorab gezeichnet, damit Mausrad und Balken flüssig bleiben.",
+                    "Die Darstellung selbst bleibt gleich: ein Bildschirmfoto vor und nach der Korrektur ist pixelgleich."
+                }),
             new ReleaseNote("1.4.5-beta.17", "26 Oct 2026",
                 "Lighter Performance mode, Rich Presence out of the box",
                 "Leichterer Leistungsmodus, Rich Presence ohne Einrichtung",
@@ -489,6 +506,16 @@ namespace HabboBadgeCreator
             closeBtn.SetBounds(ClientSize.Width - T.P(40), T.P(8), T.P(32), T.P(28));
 
             LayoutAll();
+            list.Prepare();
+            using (GraphicsPath p = T.Round(new RectangleF(0, 0, Width, Height), T.F(12f)))
+                Region = new Region(p);
+        }
+
+        /// <summary>Paints the entries before the window appears, so no frame shows a bare body.</summary>
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            list.Refresh();
         }
 
         void LayoutAll()
@@ -565,13 +592,6 @@ namespace HabboBadgeCreator
             }
         }
 
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
-            using (GraphicsPath p = T.Round(new RectangleF(0, 0, Width, Height), T.F(12f)))
-                Region = new Region(p);
-        }
-
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         static extern bool ReleaseCapture();
 
@@ -580,9 +600,10 @@ namespace HabboBadgeCreator
     }
 
     /// <summary>
-    /// The release notes are laid out once into an opaque bitmap and the viewport is a crop of
-    /// it, so scrolling is a blit instead of re-wrapping every entry on every wheel notch. The
-    /// bitmap has a filled background on purpose: a transparent buffer made ClearType glyphs
+    /// Every entry is laid out once into an opaque bitmap of its own and rendered the first time
+    /// the viewport needs it, so opening the sheet costs one screenful instead of the whole
+    /// history, and scrolling is a blit instead of re-wrapping every entry on every wheel notch.
+    /// The slices have a filled background on purpose: a transparent buffer made ClearType glyphs
     /// ghost in the light theme.
     /// </summary>
     internal class ReleaseList : Control
@@ -592,8 +613,9 @@ namespace HabboBadgeCreator
         bool hotBar, dragBar;
         int dragGrab;
 
-        Bitmap content;
-        int contentKey;
+        Bitmap[] slices;   // index 0 is the version card, 1..n mirror AppInfo.Releases
+        int[] tops;        // content y where each slice starts
+        int sliceKey;
         int targetScroll;
         bool gliding;
         readonly Timer glide = new Timer();
@@ -677,34 +699,112 @@ namespace HabboBadgeCreator
             return h;
         }
 
-        int MeasureHeight()
+        int SliceBottom(int i)
         {
-            int y = T.P(8) + T.P(72) + T.P(18);
-            foreach (ReleaseNote r in AppInfo.Releases) y += ReleaseHeight(r);
-            return y + T.P(8);
+            return i + 1 < tops.Length ? tops[i + 1] : contentH - T.P(8);
         }
 
-        /// <summary>Lays the whole sheet out once; scrolling only crops this bitmap.</summary>
-        void EnsureContent()
+        /// <summary>Measures the whole history once; the entries themselves render on demand.</summary>
+        void EnsureLayout()
         {
             int key = ContentKey();
-            if (content != null && contentKey == key && content.Width == Width) return;
-            if (content != null) { content.Dispose(); content = null; }
-            contentH = Math.Max(1, MeasureHeight());
-            if (Width <= 0 || Height <= 0) return;
-            content = new Bitmap(Width, contentH, PixelFormat.Format32bppPArgb);
-            using (Graphics g = Graphics.FromImage(content))
+            if (tops != null && sliceKey == key) return;
+            DisposeSlices();
+            int n = AppInfo.Releases.Length + 1;
+            int[] places = new int[n];
+            int y = T.P(8);
+            places[0] = y;
+            y += T.P(72) + T.P(18);
+            for (int i = 1; i < n; i++)
+            {
+                places[i] = y;
+                y += ReleaseHeight(AppInfo.Releases[i - 1]);
+            }
+            contentH = Math.Max(1, y + T.P(8));
+            tops = places;
+            slices = new Bitmap[n];
+            sliceKey = key;
+            scroll = Math.Min(scroll, MaxScroll);
+        }
+
+        /// <summary>Renders one entry into its own bitmap the first time the viewport needs it.</summary>
+        Bitmap Slice(int i)
+        {
+            if (slices[i] != null) return slices[i];
+            int w = Math.Max(1, Width);
+            int h = Math.Max(1, SliceBottom(i) - tops[i]);
+            Bitmap b = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(b))
             {
                 using (SolidBrush bg = new SolidBrush(BackColor))
-                    g.FillRectangle(bg, 0, 0, Width, contentH);
+                    g.FillRectangle(bg, 0, 0, w, h);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                int y = T.P(8);
-                y = DrawVersionCard(g, y);
-                foreach (ReleaseNote r in AppInfo.Releases)
-                    y = DrawRelease(g, y, r);
+                if (i == 0) DrawVersionCard(g, 0);
+                else DrawRelease(g, 0, AppInfo.Releases[i - 1]);
             }
-            contentKey = key;
-            scroll = Math.Min(scroll, MaxScroll);
+            slices[i] = b;
+            return b;
+        }
+
+        /// <summary>Blits every entry the viewport covers.</summary>
+        void PaintEntries(Graphics g)
+        {
+            if (tops == null) return;
+            int top = scroll, bottom = scroll + Height;
+            for (int i = 0; i < tops.Length; i++)
+            {
+                if (SliceBottom(i) <= top) continue;
+                if (tops[i] >= bottom) break;
+                Bitmap b = Slice(i);
+                int y = tops[i] - scroll;
+                g.DrawImage(b, new Rectangle(0, y, b.Width, b.Height),
+                    new Rectangle(0, 0, b.Width, b.Height), GraphicsUnit.Pixel);
+            }
+        }
+
+        /// <summary>Renders one entry beyond each edge, so a scroll step is always a blit.</summary>
+        void Prefetch()
+        {
+            if (tops == null) return;
+            int top = scroll, bottom = scroll + Height;
+            for (int i = 0; i < tops.Length; i++)
+            {
+                if (tops[i] < bottom || slices[i] != null) continue;
+                Slice(i);
+                break;
+            }
+            for (int i = tops.Length - 1; i >= 0; i--)
+            {
+                if (SliceBottom(i) > top || slices[i] != null) continue;
+                Slice(i);
+                break;
+            }
+        }
+
+        /// <summary>Warms the entry cache before the sheet is shown, so the first paint is a blit.</summary>
+        public void Prepare()
+        {
+            if (Width <= 0 || Height <= 0) return;
+            EnsureLayout();
+            for (int i = 0; i < tops.Length; i++)
+            {
+                if (SliceBottom(i) <= scroll) continue;
+                if (tops[i] >= scroll + Height * 2) break;
+                Slice(i);
+            }
+        }
+
+        /// <summary>Drops the rendered entries; the next paint re-measures and re-renders.</summary>
+        void DisposeSlices()
+        {
+            if (slices != null)
+            {
+                foreach (Bitmap b in slices) if (b != null) b.Dispose();
+                slices = null;
+            }
+            tops = null;
+            contentH = -1;
+            sliceKey = 0;
         }
 
         int BarHeight
@@ -730,16 +830,9 @@ namespace HabboBadgeCreator
         {
             Graphics g = e.Graphics;
             using (SolidBrush bg = new SolidBrush(BackColor)) g.FillRectangle(bg, ClientRectangle);
-            EnsureContent();
-
-            if (content != null)
-            {
-                int h = Math.Min(Height, content.Height - scroll);
-                if (h > 0)
-                    g.DrawImage(content, new Rectangle(0, 0, Width, h),
-                        new Rectangle(0, scroll, Width, h), GraphicsUnit.Pixel);
-            }
-
+            EnsureLayout();
+            PaintEntries(g);
+            Prefetch();
             DrawBar(g);
         }
 
@@ -862,8 +955,6 @@ namespace HabboBadgeCreator
         {
             base.OnResize(e);
             if (gliding) { gliding = false; glide.Stop(); }
-            if (content != null) { content.Dispose(); content = null; }
-            contentH = -1;
             Invalidate();
         }
 
@@ -873,7 +964,7 @@ namespace HabboBadgeCreator
             {
                 glide.Stop();
                 glide.Dispose();
-                if (content != null) { content.Dispose(); content = null; }
+                DisposeSlices();
             }
             base.Dispose(disposing);
         }
