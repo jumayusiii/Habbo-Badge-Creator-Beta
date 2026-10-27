@@ -9,13 +9,30 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.19";
-        public const string Build = "2026-10-27.19";
+        public const string Version = "1.4.5-beta.20";
+        public const string Build = "2026-10-27.20";
         public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.20", "27 Oct 2026",
+                "Settings and Changelog fade in and out",
+                "Einstellungen und Änderungen blenden weich ein und aus",
+                new string[]
+                {
+                    "Settings and Changelog now fade in over the editor when they open and fade back out when they close: 150 ms in, 120 ms out, eased at both ends instead of a linear ramp.",
+                    "The fade is one window-wide blend, so the rounded corners, the custom chrome and every control arrive together. Both sheets are fully painted before they appear, so the animation never hides a blank body.",
+                    "Every way of closing uses the same fade-out — X, Esc, Space, Enter, Cancel and Save — and a second click during it no longer cuts the animation short. Closing while the sheet is still fading in continues from the current opacity instead of flashing to full first.",
+                    "Windows' animation setting is respected: with visual effects turned off the sheets open and close instantly. The fade is a window attribute only, so a rendered sheet is byte-identical with and without it — the animation changes nothing about how the sheet is drawn."
+                },
+                new string[]
+                {
+                    "Einstellungen und Änderungen blenden sich beim Öffnen über dem Editor ein und beim Schließen wieder aus: 150 ms hinein, 120 ms hinaus, an beiden Enden weich statt linear.",
+                    "Das Ein- und Ausblenden erfasst das ganze Fenster, abgerundete Ecken, eigener Rahmen und alle Bedienelemente kommen gemeinsam. Beide Fenster sind vor dem Erscheinen fertig gezeichnet, die Animation verdeckt also nie einen leeren Rumpf.",
+                    "Jeder Weg zum Schließen nutzt dasselbe Ausblenden – X, Esc, Leertaste, Enter, Abbrechen und Speichern –, und ein zweiter Klick darauf schneidet die Animation nicht mehr ab. Ein Schließen während des Einblendens läuft von der aktuellen Deckkraft weiter, statt kurz auf voll zu springen.",
+                    "Die Windows-Einstellung für Animationen wird beachtet: Sind visuelle Effekte aus, öffnen und schließen die Fenster sofort. Das Ein- und Ausblenden ist reine Fenstereigenschaft – ein gerendertes Fenster ist mit und ohne Animation bytegleich, an der Darstellung ändert sich nichts."
+                }),
             new ReleaseNote("1.4.5-beta.19", "27 Oct 2026",
                 "Release build from the pipeline",
                 "Release-Build aus der Pipeline",
@@ -524,6 +541,7 @@ namespace HabboBadgeCreator
             list.Prepare();
             using (GraphicsPath p = T.Round(new RectangleF(0, 0, Width, Height), T.F(12f)))
                 Region = new Region(p);
+            SheetFade.Attach(this);
         }
 
         /// <summary>Paints the entries before the window appears, so no frame shows a bare body.</summary>

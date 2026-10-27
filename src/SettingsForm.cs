@@ -43,6 +43,8 @@ namespace HabboBadgeCreator
             statusTimer.Interval = 700;
             statusTimer.Tick += delegate { Invalidate(new Rectangle(0, T.P(540), Width, T.P(50))); };
             statusTimer.Start();
+
+            SheetFade.Attach(this);
         }
 
         void BuildUi()

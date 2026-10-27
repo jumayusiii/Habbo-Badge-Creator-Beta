@@ -7,6 +7,96 @@ using System.Windows.Forms;
 
 namespace HabboBadgeCreator
 {
+    /// <summary>
+    /// Short window fade for the modal sheets: Settings and Changelog ease in as they open and
+    /// ease out again before they close, so they glide over the editor instead of appearing and
+    /// vanishing in a single frame. The ramp is time-based (not per tick), so a busy moment or a
+    /// slow timer resolution stretches the fade instead of skipping frames.
+    /// </summary>
+    internal static class SheetFade
+    {
+        const int InMs = 150, OutMs = 120;
+
+        /// <summary>Attaches the fade to a sheet; call once, at the end of its constructor.</summary>
+        public static void Attach(Form sheet)
+        {
+            // "Show animations in Windows" is off: no fade, no layered window, just the plain sheet.
+            if (!SystemInformation.UIEffectsEnabled) return;
+
+            Timer timer = new Timer();
+            System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
+            bool closing = false;    // the fade-out is running
+            bool finished = false;   // our own Close() at the end of the fade-out
+            int span = InMs;
+            float from = 0f, to = 1f;   // the ramp, taken from wherever the sheet is right now
+
+            // the window is created transparent, so the first visible frame is the dim first step
+            sheet.Opacity = 0;
+
+            sheet.Shown += delegate
+            {
+                if (closing) return;
+                from = (float)sheet.Opacity;
+                to = 1f;
+                span = InMs;
+                clock.Reset();
+                clock.Start();
+                timer.Start();
+            };
+
+            sheet.FormClosing += delegate(object sender, FormClosingEventArgs e)
+            {
+                if (finished) return;
+                if (closing) { e.Cancel = true; return; }   // a second click must not cut the fade short
+
+                // Only a user close fades. If the owner is shutting down, Windows is ending the
+                // session or the process is going away, the sheet must not hold anything up.
+                if (e.CloseReason != CloseReason.None && e.CloseReason != CloseReason.UserClosing) return;
+                if (!sheet.IsHandleCreated || sheet.WindowState == FormWindowState.Minimized) return;
+
+                e.Cancel = true;
+                closing = true;
+                from = (float)sheet.Opacity;   // closing mid fade-in continues from there, no pop
+                to = 0f;
+                span = OutMs;
+                clock.Reset();
+                clock.Start();
+                timer.Start();
+            };
+
+            timer.Interval = 15;
+            timer.Tick += delegate
+            {
+                if (sheet.IsDisposed || !sheet.IsHandleCreated) { timer.Stop(); return; }
+
+                float t = span <= 0 ? 1f : Math.Min(1f, (float)clock.ElapsedMilliseconds / span);
+                float eased = t * t * (3f - 2f * t);   // smoothstep: no jerk at either end
+
+                if (closing)
+                {
+                    if (t >= 1f)
+                    {
+                        timer.Stop();
+                        finished = true;
+                        sheet.Close();   // already invisible at this point, so nothing flashes
+                        return;
+                    }
+                    sheet.Opacity = from + (to - from) * eased;
+                    return;
+                }
+
+                sheet.Opacity = from + (to - from) * eased;
+                if (t >= 1f) timer.Stop();
+            };
+
+            sheet.FormClosed += delegate
+            {
+                timer.Stop();
+                timer.Dispose();
+            };
+        }
+    }
+
     /// <summary>Rounded button with optional leading icon.</summary>
     internal class FlatBtn : Control
     {

@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.19` |
+| Version | `1.4.5` | `1.4.5-beta.20` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -44,6 +44,13 @@ Both builds can run at the same time. They never read or write each other's gall
   recall them with one click, drag chips into a different order and double-click one to rename it.
 - **Extra canvas tools** — centre / thirds / quarter guides (`C`), horizontal and vertical flip
   (`Shift+H` / `Shift+V`), and arrow-key nudging of the active layer.
+
+### New in 1.4.5-beta.20
+
+The Settings and Changelog sheets fade in over the editor and fade back out when they close —
+150 ms in, 120 ms out, eased at both ends. Closing while a sheet is still fading in continues
+from the current opacity instead of flashing to full, and Windows' animation setting is
+respected. See the [full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.19
 
