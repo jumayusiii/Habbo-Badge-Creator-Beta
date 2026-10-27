@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to build (e.g. v1.4.5-beta.17)'
-        required: true
+        description: 'Tag to build (e.g. v1.4.5-beta.17). Leave empty to build the selected branch'
+        required: false
         type: string
       publish:
         description: 'Publish the release as well'
@@ -37,34 +37,38 @@ jobs:
       PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
 
     steps:
-      - name: Check out the tag
-        uses: actions/checkout@v4
+      - name: Check out the ref
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
 
-      - name: Resolve the version from the tag
+      - name: Resolve the version
         id: version
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $tag = $env:BUILD_REF
-          if ($tag -notmatch '^v(?<version>\d[0-9A-Za-z.\-]*)$') {
-            throw "Tag '$tag' is not a version tag (expected something like v1.4.5-beta.17)."
-          }
-          $version = $Matches['version']
+          $ref = $env:BUILD_REF
 
           $constant = Select-String -Path 'src/Changelog.cs' -Pattern 'public const string Version = "(?<version>[^"]+)"'
           if (-not $constant) { throw 'Could not find AppInfo.Version in src/Changelog.cs.' }
           $appVersion = $constant.Matches[0].Groups['version'].Value
-          if ($appVersion -ne $version) {
-            throw "Tag '$tag' does not match AppInfo.Version '$appVersion' in src/Changelog.cs. Bump the version and add a release note before tagging."
+
+          # a version tag has to name the version the source claims
+          $isTag = $ref -match '^v(?<tagversion>\d[0-9A-Za-z.\-]*)$'
+          if ($isTag -and $Matches['tagversion'] -ne $appVersion) {
+            throw "Tag '$ref' does not match AppInfo.Version '$appVersion' in src/Changelog.cs. Bump the version and add a release note before tagging."
+          }
+          if (-not $isTag -and $env:PUBLISH -eq 'true') {
+            throw "Publishing needs a version tag (like v$appVersion), not the ref '$ref'."
           }
 
+          $version = $appVersion
           $prerelease = $version.Contains('-')
           "version=$version" >> $env:GITHUB_OUTPUT
           "prerelease=$($prerelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          Write-Host "Tag: $tag"
+          "is_tag=$($isTag.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          Write-Host "Ref: $ref (version tag: $isTag)"
           Write-Host "Version: $version"
           Write-Host "Pre-release: $prerelease"
 
@@ -121,7 +125,7 @@ jobs:
 
       - name: Upload the self-test log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: selftest-log
           path: ${{ runner.temp }}/selftest.txt
@@ -247,7 +251,7 @@ jobs:
 
       - name: Upload the release assets
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets
           path: |

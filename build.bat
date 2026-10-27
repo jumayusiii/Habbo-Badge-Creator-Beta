@@ -13,7 +13,7 @@ if not exist "dist" mkdir "dist"
 
 "%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /debug- ^
   /win32icon:"assets\habbo.ico" /win32manifest:"app.manifest" ^
-  /resource:"assets\logo.png,logo.png" /resource:"assets\habbo-wordmark.png,habbo-wordmark.png" ^
+  /resource:"assets\logo.png",logo.png /resource:"assets\habbo-wordmark.png",habbo-wordmark.png ^
   /out:"dist\Habbo Badge Creator Beta.exe" ^
   /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll ^
   "src\*.cs"
