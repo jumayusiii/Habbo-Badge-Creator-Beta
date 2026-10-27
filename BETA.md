@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.21` |
+| Version | `1.4.5` | `1.4.5-beta.22` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -44,10 +44,24 @@ Both builds can run at the same time. They never read or write each other's gall
   recall them with one click, drag chips into a different order and double-click one to rename it.
 - **Extra canvas tools** — centre / thirds / quarter guides (`C`), horizontal and vertical flip
   (`Shift+H` / `Shift+V`), and arrow-key nudging of the active layer.
-- **Themed colour picker** — the round chip and the **+** button next to the palette open the
+- **Themed colour picker** - the round chip and the **+** button next to the palette open the
   app's own colour sheet: a saturation/value square with the hue rail, hex field, live R/G/B
   readout, before/after swatches and the palette, drawn in Dark, Light, Navy and Custom.
   Picking previews on the badge; **Cancel** puts the previous colour back.
+- **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
+  a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.22
+
+The last stock Windows windows are gone. Deleting a badge used to open a pale system message box
+with stock Yes/No buttons; it now opens the app's own delete sheet, with the badge on the
+checkerboard, the name, "This cannot be undone" and a danger-coloured **Delete** button — drawn
+from the active palette, so it matches Dark, Light, Navy and Custom. Import and export errors use
+the same themed message sheet with a single **OK** button. Esc cancels, Enter confirms, the header
+drags the sheet and it fades in and out like the other sheets. See the
+[full changelog](README.md#changelog).
+
+![The themed delete sheet](docs/confirm-delete.png)
 
 ### New in 1.4.5-beta.21
 

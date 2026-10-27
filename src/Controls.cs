@@ -103,6 +103,7 @@ namespace HabboBadgeCreator
         public string Label = "";
         public string Icon = null;
         public bool Primary = false;
+        public bool Danger = false;
         bool hot, down;
 
         public FlatBtn()
@@ -122,7 +123,8 @@ namespace HabboBadgeCreator
 
             RectangleF r = new RectangleF(0.5f, 0.5f, Width - 1f, Height - 1f);
             float rad = T.F(8f);
-            Color fg = T.ButtonFace(g, r, rad, Primary, hot, down);
+            Color fg = Danger ? T.DangerButtonFace(g, r, rad, hot, down)
+                              : T.ButtonFace(g, r, rad, Primary, hot, down);
 
             float iw = Icon != null ? T.F(15f) : 0f;
             float gap = Icon != null ? T.F(7f) : 0f;

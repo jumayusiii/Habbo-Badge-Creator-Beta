@@ -1117,11 +1117,11 @@ namespace HabboBadgeCreator
         {
             if (e == null) return;
             string nm = string.IsNullOrEmpty(e.Name) ? L.T("Untitled badge", "Unbenanntes Badge") : e.Name;
-            DialogResult r = MessageBox.Show(this,
-                L.F("Delete \"{0}\" from your badges?\nThis cannot be undone.",
-                    "\"{0}\" aus deinen Badges löschen?\nDas kann nicht rückgängig gemacht werden.", nm),
-                L.T("Delete badge", "Badge löschen"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (r != DialogResult.Yes) return;
+            if (!MessageSheetForm.Confirm(this,
+                L.T("Delete badge", "Badge löschen"),
+                L.F("Delete \"{0}\" from your badges?", "\"{0}\" aus deinen Badges löschen?", nm),
+                L.T("This cannot be undone.", "Das kann nicht rückgängig gemacht werden."),
+                L.T("Delete", "Löschen"), L.T("Cancel", "Abbrechen"), e.Thumb)) return;
             Store.Delete(e);
             ReloadGallery();
             ShowToast(L.T("Badge deleted", "Badge gelöscht"));
@@ -1175,9 +1175,10 @@ namespace HabboBadgeCreator
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, L.T("Could not save the image:\n", "Bild konnte nicht gespeichert werden:\n") + ex.Message,
+                    MessageSheetForm.Error(this,
                         L.T("Export failed", "Export fehlgeschlagen"),
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        L.T("Could not save the image:", "Bild konnte nicht gespeichert werden:"),
+                        ex.Message);
                 }
             }
         }
@@ -1203,9 +1204,10 @@ namespace HabboBadgeCreator
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, L.T("Could not read this image:\n", "Bild konnte nicht gelesen werden:\n") + ex.Message,
+                MessageSheetForm.Error(this,
                     L.T("Import failed", "Import fehlgeschlagen"),
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    L.T("Could not read this image:", "Bild konnte nicht gelesen werden:"),
+                    ex.Message);
             }
         }
 

@@ -112,6 +112,16 @@ are the same painters the theme designer uses.
 
 ![The whole editor in a custom palette, including the canvas](docs/preview-custom.png)
 
+### Themed message sheets (beta)
+
+Deleting a badge no longer opens Windows' stock message box. The app draws the same rounded sheet
+as Settings: the badge on the checkerboard, its name, "This cannot be undone", and a filled
+danger **Delete** beside **Cancel**, in every palette. Import and export errors use the same sheet
+with a single **OK** button. `Esc` or the X cancels, `Enter` confirms, the header drags the sheet,
+and it fades in and out like the other sheets.
+
+![The themed delete sheet in the dark theme](docs/confirm-delete.png)
+
 ## Changelog
 
 Press the **Changelog** chip next to the Settings chip. The sheet shows the running version
@@ -123,6 +133,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.22 | 27 Oct 2026 | **Beta:** themed delete and message sheets — badge thumbnail, danger button and palette-aware chrome replace Windows' stock message box for badge deletion and import/export errors |
 | 1.4.5-beta.21 | 27 Oct 2026 | **Beta:** the app's own colour sheet replaces Windows' colour dialog — saturation/value square, hue rail, hex and R/G/B, before/after and the palette, themed for every palette and previewing live on the badge |
 | 1.4.5-beta.20 | 27 Oct 2026 | **Beta:** Settings and Changelog fade in and out over the editor (150 ms in, 120 ms out, eased); a close during the fade-in continues from the current opacity |
 | 1.4.5-beta.19 | 27 Oct 2026 | **Beta:** release-pipeline build — the beta.18 app compiled, self-tested and packaged by the tag workflow, so the download matches the tag |
@@ -279,6 +290,7 @@ build.bat
 | `src/Discord.cs` | Discord IPC client (handshake, activity frames, reconnect) and the built-in application ID |
 | `src/Lang.cs` | English / German string lookup |
 | `src/Splash.cs` | startup splash with the fading HABBO wordmark |
+| `src/MessageSheet.cs` | themed delete confirmation and message sheet, shared by every notice |
 | `src/Changelog.cs` | app version, footer credit and the release-notes sheet |
 | `src/Program.cs` | entry point, DPI setup, `--selftest` / `--shot` developer modes |
 | `src/AssemblyInfo.cs` | Windows file details: product, version and copyright |
@@ -306,6 +318,7 @@ build.bat
 "dist\Habbo Badge Creator Beta.exe" --shot-changelog notes.png      # render the release notes
 "dist\Habbo Badge Creator Beta.exe" --picker                        # open the colour sheet (live run)
 "dist\Habbo Badge Creator Beta.exe" --shot-picker colour.png         # render the colour sheet
+"dist\Habbo Badge Creator Beta.exe" --shot-dialog delete.png         # render the delete sheet
 "dist\Habbo Badge Creator Beta.exe" --scale 1.5 --nosplash          # render at 150% layout scale
 "dist\Habbo Badge Creator Beta.exe" --nosplash                     # skip the startup splash
 ```

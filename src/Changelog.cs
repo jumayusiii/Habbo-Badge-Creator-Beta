@@ -9,13 +9,32 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.21";
-        public const string Build = "2026-10-27.21";
+        public const string Version = "1.4.5-beta.22";
+        public const string Build = "2026-10-27.22";
         public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.22", "27 Oct 2026",
+                "Themed delete and message sheets",
+                "Lösch- und Meldungsfenster im App-Design",
+                new string[]
+                {
+                    "Windows' stock message box is gone from badge deletion and from the import/export error notes: the app draws its own sheet, so the last windows that ignored the palette — pale system grey with stock buttons — are gone too.",
+                    "The delete sheet shows the badge at 62 px on the checkerboard, states the name and \"This cannot be undone\", and uses a filled danger button for the destructive action. Every tone comes from the active palette, so it fits Dark, Light, Navy and Custom.",
+                    "Esc or the X cancels, Enter confirms, and the sheet can be moved by its header. It fades in and out with the same 150/120 ms ease as Settings, Changelog and the colour sheet.",
+                    "A shared message sheet also covers the export and import error notes, with a single OK button and the error text wrapped beneath the message.",
+                    "The developer flag --shot-dialog renders the delete sheet to a PNG for visual checks."
+                },
+                new string[]
+                {
+                    "Der Windows-Meldungsdialog ist beim Löschen von Badges und bei Import-/Export-Fehlern verschwunden: Die App zeichnet ihr eigenes Fenster – damit sind auch die letzten Fenster weg, die die Palette ignorierten (helles Systemgrau mit Standard-Schaltflächen).",
+                    "Das Löschfenster zeigt das Badge in 62 px auf dem Schachbrett, nennt den Namen und „Das kann nicht rückgängig gemacht werden“ und nutzt für die endgültige Aktion eine rote Warnschaltfläche. Alle Töne stammen aus der aktiven Palette und passen zu Dunkel, Hell, Marineblau und Eigenes.",
+                    "Esc oder das Kreuz brechen ab, Enter bestätigt, und das Fenster lässt sich am Kopf verschieben. Es blendet sich mit derselben 150/120-ms-Kurve ein und aus wie Einstellungen, Änderungen und der Farbwähler.",
+                    "Ein gemeinsames Meldungsfenster deckt auch die Import- und Export-Fehler ab: eine OK-Schaltfläche, darunter der umbrochene Fehlertext.",
+                    "Der Entwickler-Schalter --shot-dialog rendert das Löschfenster als PNG für Sichtprüfungen."
+                }),
             new ReleaseNote("1.4.5-beta.21", "27 Oct 2026",
                 "Themed colour picker",
                 "Farbwähler im App-Design",

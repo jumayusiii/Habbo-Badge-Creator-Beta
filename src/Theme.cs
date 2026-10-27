@@ -874,6 +874,28 @@ namespace HabboBadgeCreator
                             g.DrawPath(q, TrashPath());
                         }
                         break;
+                    case "warning":
+                        using (GraphicsPath wp = new GraphicsPath())
+                        {
+                            wp.AddPolygon(new PointF[]
+                            {
+                                new PointF(12f, 3.2f), new PointF(21.6f, 20.4f), new PointF(2.4f, 20.4f)
+                            });
+                            g.DrawPath(p, wp);
+                        }
+                        g.DrawLine(p, 12f, 9.2f, 12f, 14.4f);
+                        g.FillEllipse(b, 10.9f, 16.4f, 2.2f, 2.2f);
+                        break;
+                    case "error":
+                        g.DrawEllipse(p, 3.4f, 3.4f, 17.2f, 17.2f);
+                        g.DrawLine(p, 8.2f, 8.2f, 15.8f, 15.8f);
+                        g.DrawLine(p, 15.8f, 8.2f, 8.2f, 15.8f);
+                        break;
+                    case "info":
+                        g.DrawEllipse(p, 3.4f, 3.4f, 17.2f, 17.2f);
+                        g.FillEllipse(b, 10.9f, 6.6f, 2.2f, 2.2f);
+                        g.DrawLine(p, 12f, 10.6f, 12f, 17f);
+                        break;
                     case "image":
                         using (Pen q = new Pen(c, pw * 0.9f))
                             g.DrawRectangle(q, 3.6f, 4.6f, 16.8f, 14.8f);
@@ -1033,6 +1055,16 @@ namespace HabboBadgeCreator
             StrokeRound(g, new RectangleF(r.X + 0.5f, r.Y + 0.5f, r.Width - 1f, r.Height - 1f),
                 rad, hot ? StrokeHot : Stroke, 1f);
             return hot ? Text : BtnText;
+        }
+
+        /// <summary>Paints a destructive button face and returns the content colour.</summary>
+        public static Color DangerButtonFace(Graphics g, RectangleF r, float rad, bool hot, bool down)
+        {
+            Color fill = down ? Mix(Danger, Color.Black, 0.18f)
+                       : hot ? Mix(Danger, Color.White, 0.12f)
+                       : Danger;
+            FillRound(g, r, rad, fill);
+            return Color.White;
         }
 
         public static Color Mix(Color a, Color b, float t)

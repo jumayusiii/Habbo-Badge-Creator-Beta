@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Pipes;
@@ -78,7 +79,8 @@ namespace HabboBadgeCreator
                             Has(args, "--layers-demo") || Has(args, "--shot-designer") ||
                             Has(args, "--tip") || Has(args, "--changelog") || Has(args, "--settings") ||
                             Has(args, "--layer-tip") || Has(args, "--shot-settings") || Has(args, "--shot-changelog") ||
-                            Has(args, "--shot-splash") || Has(args, "--shot-picker") || Has(args, "--picker");
+                            Has(args, "--shot-splash") || Has(args, "--shot-picker") || Has(args, "--picker") ||
+                            Has(args, "--shot-dialog");
             if (!noSplash) Application.Run(new SplashForm());
 
             string splashShot = Value(args, "--shot-splash");
@@ -111,6 +113,12 @@ namespace HabboBadgeCreator
             if (pickerShot != null)
             {
                 ShotPicker(pickerShot);
+                return;
+            }
+            string dialogShot = Value(args, "--shot-dialog");
+            if (dialogShot != null)
+            {
+                ShotDialog(dialogShot);
                 return;
             }
 
@@ -354,6 +362,57 @@ namespace HabboBadgeCreator
                 }
                 f.Close();
             }
+        }
+
+        /// <summary>Renders the themed delete sheet to a PNG for visual checks; follows --theme.</summary>
+        static void ShotDialog(string path)
+        {
+            AppSettings prefs = Store.LoadSettings();
+            ApplyForced(prefs);
+            T.Apply(prefs);
+            L.De = ForceLang == "de" || (ForceLang != "en" && prefs.Lang == "de");
+            using (Bitmap preview = DemoPreview())
+            using (MessageSheetForm f = new MessageSheetForm(MessageKind.Warning,
+                L.T("Delete badge", "Badge löschen"),
+                L.F("Delete \"{0}\" from your badges?", "\"{0}\" aus deinen Badges löschen?", "Golden Crown"),
+                L.T("This cannot be undone.", "Das kann nicht rückgängig gemacht werden."),
+                L.T("Delete", "Löschen"), L.T("Cancel", "Abbrechen"), preview, true))
+            {
+                f.StartPosition = FormStartPosition.Manual;
+                f.Location = new Point(40, 40);
+                f.Show();
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(300);
+                Application.DoEvents();
+                using (Bitmap b = new Bitmap(f.Width, f.Height))
+                {
+                    f.DrawToBitmap(b, new Rectangle(0, 0, f.Width, f.Height));
+                    b.Save(path, ImageFormat.Png);
+                }
+                f.Close();
+            }
+        }
+
+        static Bitmap DemoPreview()
+        {
+            Bitmap b = new Bitmap(PixelDoc.N, PixelDoc.N, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(b))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                using (GraphicsPath p = T.Round(new RectangleF(0, 0, 40, 40), 8f))
+                using (LinearGradientBrush lg = new LinearGradientBrush(
+                    new Rectangle(0, 0, 40, 40), Color.FromArgb(58, 96, 168), Color.FromArgb(15, 28, 52), 90f))
+                    g.FillPath(lg, p);
+                using (SolidBrush gold = new SolidBrush(Color.FromArgb(247, 197, 74)))
+                {
+                    g.FillPolygon(gold, new PointF[] {
+                        new PointF(8f, 27f), new PointF(11f, 14f), new PointF(16f, 21f),
+                        new PointF(20f, 10f), new PointF(24f, 21f), new PointF(29f, 14f), new PointF(32f, 27f) });
+                    g.FillRectangle(gold, 9, 28, 22, 3);
+                }
+            }
+            return b;
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -711,6 +770,7 @@ namespace HabboBadgeCreator
             CheckThemePalette();
             CheckCustomTheme();
             CheckPickers();
+            CheckMessageSheets();
             CheckDiscord();
             CheckPortal();
 
@@ -936,6 +996,34 @@ namespace HabboBadgeCreator
                     railTop.R > railTop.G && railTop.R > railTop.B &&
                     railMid.B > railMid.R && railMid.G > railMid.R);
             }
+        }
+
+        /// <summary>Covers the themed confirm/notice sheet and its content-driven height.</summary>
+        static void CheckMessageSheets()
+        {
+            ThemeMode before = T.Mode;
+            T.Apply(ThemeMode.Dark);
+            int shortH;
+            using (MessageSheetForm f = new MessageSheetForm(MessageKind.Warning,
+                "Delete badge", "Delete \"Golden Crown\" from your badges?", "This cannot be undone.",
+                "Delete", "Cancel", null, true))
+            {
+                Check("delete sheet has a cancel and a danger action", f.HasCancelAction && f.HasDangerAction);
+                Check("delete sheet sizes itself around its content",
+                    f.ClientSize.Width >= T.P(440) && f.ClientSize.Height >= T.P(180));
+                shortH = f.ClientSize.Height;
+            }
+
+            string longText = "This is a long error note that has to wrap over several lines instead of widening the sheet, " +
+                              "so the sheet has to grow downwards and keep its buttons at the bottom. ";
+            using (MessageSheetForm f = new MessageSheetForm(MessageKind.Error,
+                "Export failed", "Could not save the image:", longText + longText + longText,
+                "OK", null, null, false))
+            {
+                Check("error sheet grows for wrapped text", f.ClientSize.Height > shortH);
+                Check("error sheet has one action and no cancel", !f.HasCancelAction && !f.HasDangerAction);
+            }
+            T.Apply(before);
         }
 
         static void CheckDiscord()
