@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.18` |
+| Version | `1.4.5` | `1.4.5-beta.19` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -44,6 +44,12 @@ Both builds can run at the same time. They never read or write each other's gall
   recall them with one click, drag chips into a different order and double-click one to rename it.
 - **Extra canvas tools** — centre / thirds / quarter guides (`C`), horizontal and vertical flip
   (`Shift+H` / `Shift+V`), and arrow-key nudging of the active layer.
+
+### New in 1.4.5-beta.19
+
+No feature changes: this is the beta.18 app rebuilt and published by the release workflow from its
+version tag, by the same run that compiles and self-tests it. See the
+[full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.18
 

@@ -9,13 +9,28 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.18";
-        public const string Build = "2026-10-27.18";
+        public const string Version = "1.4.5-beta.19";
+        public const string Build = "2026-10-27.19";
         public const string Date = "27 October 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.19", "27 Oct 2026",
+                "Release build from the pipeline",
+                "Release-Build aus der Pipeline",
+                new string[]
+                {
+                    "This build carries no feature changes: it is the 1.4.5-beta.18 app, rebuilt and published by the release workflow that runs on a version tag.",
+                    "The tag names the version, the run compiles and self-tests the app on a clean Windows runner, and the packages are uploaded from that same run — so the download matches the tag.",
+                    "The Changelog fix from beta.18 is included unchanged, and the app now reports 1.4.5-beta.19."
+                },
+                new string[]
+                {
+                    "Dieser Build enthält keine funktionalen Änderungen: Es ist die App aus 1.4.5-beta.18, neu gebaut und veröffentlicht durch den Release-Workflow, der bei einem Versions-Tag läuft.",
+                    "Der Tag benennt die Version, der Lauf kompiliert die App und führt den Selbsttest auf einem frischen Windows-Runner aus; die Pakete stammen aus genau diesem Lauf – der Download entspricht damit dem Tag.",
+                    "Die Changelog-Korrektur aus beta.18 ist unverändert enthalten; die App meldet jetzt 1.4.5-beta.19."
+                }),
             new ReleaseNote("1.4.5-beta.18", "27 Oct 2026",
                 "Changelog opens complete",
                 "Changelog öffnet vollständig",
