@@ -105,8 +105,13 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $log = Join-Path $env:RUNNER_TEMP 'selftest.txt'
-          & 'dist/Habbo Badge Creator Beta.exe' --selftest $log
-          $code = $LASTEXITCODE
+          Remove-Item $log -ErrorAction SilentlyContinue
+
+          # the app is a GUI executable: PowerShell's & returns before it exits,
+          # so the process has to be started with -Wait to get its exit code
+          $proc = Start-Process -FilePath 'dist/Habbo Badge Creator Beta.exe' `
+            -ArgumentList ('--selftest "{0}"' -f $log) -Wait -PassThru -NoNewWindow
+          $code = $proc.ExitCode
           if (-not (Test-Path $log)) { throw "The self-test wrote no log to $log (exit code $code)." }
 
           $lines = Get-Content $log
