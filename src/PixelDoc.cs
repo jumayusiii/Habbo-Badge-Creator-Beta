@@ -1037,6 +1037,36 @@ namespace HabboBadgeCreator
             return path;
         }
 
+        /// <summary>Writes the badge as a 40 x 40 GIF; see <see cref="GifWriter"/> for the palette rules.</summary>
+        public static string ExportGif(Bitmap bmp, string path)
+        {
+            // copy into a known 32bpp surface so the incoming pixel format never has to be guessed
+            using (Bitmap copy = new Bitmap(bmp.Width, bmp.Height, PixelFormat.Format32bppArgb))
+            {
+                using (Graphics g = Graphics.FromImage(copy))
+                {
+                    g.CompositingMode = CompositingMode.SourceCopy;
+                    g.DrawImageUnscaled(bmp, 0, 0);
+                }
+                int[] pixels = new int[copy.Width * copy.Height];
+                BitmapData d = copy.LockBits(new Rectangle(0, 0, copy.Width, copy.Height),
+                    ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+                try
+                {
+                    int[] row = new int[copy.Width];
+                    for (int y = 0; y < copy.Height; y++)
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            new IntPtr(d.Scan0.ToInt64() + y * d.Stride), row, 0, copy.Width);
+                        Array.Copy(row, 0, pixels, y * copy.Width, copy.Width);
+                    }
+                }
+                finally { copy.UnlockBits(d); }
+                GifWriter.Save(pixels, copy.Width, copy.Height, path);
+            }
+            return path;
+        }
+
         public static string SettingsFile { get { return Path.Combine(Root, "settings.json"); } }
 
         static bool GetBool(string json, string key)

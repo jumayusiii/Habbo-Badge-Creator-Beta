@@ -9,13 +9,30 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.24";
-        public const string Build = "2026-10-27.24";
-        public const string Date = "27 October 2026";
+        public const string Version = "1.4.5-beta.25";
+        public const string Build = "2026-11-03.25";
+        public const string Date = "3 November 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.25", "3 Nov 2026",
+                "GIF export",
+                "GIF-Export",
+                new string[]
+                {
+                    "Badges can now be exported as GIF as well as PNG. The Export button offers both file types in the save dialog, and Ctrl+Shift+G opens the same dialog already switched to GIF.",
+                    "The GIF comes from the app's own writer: a real GIF89a at 40 × 40 with a reserved transparent index, an exact palette while the badge uses 255 colours or fewer, and a median-cut palette above that so shaded artwork keeps its steps.",
+                    "GIF cannot store partial transparency, so pixels below 50 % alpha are written transparent and everything else fully opaque — the transparent background of a badge survives the export, soft edges do not.",
+                    "Nine new self-test checks cover the signature and size in the file, the decoded transparency and colours, a 1,600-colour badge inside the palette tolerance, writing from a bitmap and the file-type fallback."
+                },
+                new string[]
+                {
+                    "Badges lassen sich jetzt auch als GIF exportieren, nicht nur als PNG. Die Schaltfläche Export bietet beide Dateitypen im Speichern-Dialog an; Strg+Shift+G öffnet denselben Dialog direkt mit GIF.",
+                    "Das GIF kommt aus dem eigenen Schreiber der App: ein echtes GIF89a mit 40 × 40, einem reservierten transparenten Index, einer exakten Palette bis 255 Farben und darüber einer Median-Cut-Palette, damit auch schattierte Badges ihre Abstufungen behalten.",
+                    "GIF kennt keine teilweise Transparenz: Pixel unter 50 % Deckkraft werden transparent geschrieben, alle anderen voll deckend – der transparente Hintergrund eines Badges bleibt beim Export erhalten, weiche Kanten nicht.",
+                    "Neun neue Selbsttest-Prüfungen decken Signatur und Größe in der Datei, Transparenz und Farben nach dem Dekodieren, ein Badge mit 1.600 Farben innerhalb der Palettentoleranz, das Schreiben aus einem Bitmap und die Rückfallregel der Dateityp-Wahl ab."
+                }),
             new ReleaseNote("1.4.5-beta.24", "27 Oct 2026",
                 "Layout at 125 % and 150 %",
                 "Layout bei 125 % und 150 %",

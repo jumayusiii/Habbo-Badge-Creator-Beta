@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.24` |
+| Version | `1.4.5` | `1.4.5-beta.25` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -33,7 +33,10 @@ Both builds can run at the same time. They never read or write each other's gall
   rename it.
 - **Rotate and copy** — turn the artwork 90° clockwise (`R`) or anticlockwise (`Shift+R`), and
   copy the finished 40 × 40 badge to the clipboard with `Ctrl+Shift+C` or the button beside
-  **Export PNG**.
+  **Export**.
+- **GIF export** — the **Export** button's save dialog lists PNG and GIF; `Ctrl+Shift+G` opens it
+  already switched to GIF. The badge is written as a real 40 × 40 GIF89a with a reserved
+  transparent index, an exact palette up to 255 colours and median cut above that.
 - **Performance mode** — Settings → Performance. The finished canvas is cached, a repaint copies
   the visible area instead of redrawing everything, and a stroke patches only the cells it
   crosses: measured about 0.5–1 ms per mouse move instead of 7–10 ms, for less input lag and lower CPU load.
@@ -50,6 +53,23 @@ Both builds can run at the same time. They never read or write each other's gall
   Picking previews on the badge; **Cancel** puts the previous colour back.
 - **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
   a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.25
+
+Badges can be exported as GIF. The **Export** button's save dialog lists **PNG image** and
+**GIF image**; pick the GIF entry — or press `Ctrl+Shift+G`, which opens the same dialog already
+switched to GIF — and the app writes the file itself, with no third-party encoder and nothing
+extra to download.
+
+The writer reserves palette index 0 for transparent pixels, keeps an exact palette while the badge
+uses 255 colours or fewer, and switches to median-cut quantization above that, so a shaded badge
+still comes out close. GIF stores only one fully transparent colour, so pixels below 50 % alpha
+become transparent and the rest fully opaque: the badge's transparent background survives, soft
+edges do not.
+
+Nine new self-test checks cover the file signature and size, the decoded transparency and colours,
+a 1,600-colour badge inside the palette tolerance, the bitmap entry point and the file-type
+fallback. See the [full changelog](README.md#changelog).
 
 ### New in 1.4.5-beta.24
 
@@ -159,6 +179,9 @@ To remove the beta completely, delete the executable and the folder above.
 
 - Layers are a working aid, not a stored format yet: saving, exporting and the autosaved draft
   store the flattened badge.
+- GIF export writes a still image: GIF animation is not part of this build. GIF also stores only
+  one transparent colour and at most 256 palette colours, so semi-transparent pixels become
+  opaque or transparent and busy badges are quantized.
 - The custom theme designer and its presets are beta; the palette derivation and preset format
   may still change.
 - The executable is not code-signed. Windows SmartScreen may ask you to confirm the first launch

@@ -771,6 +771,7 @@ namespace HabboBadgeCreator
             CheckCustomTheme();
             CheckPickers();
             CheckMessageSheets();
+            CheckGif();
             CheckDiscord();
             CheckPortal();
 
@@ -1060,6 +1061,92 @@ namespace HabboBadgeCreator
                 guard.Dispose();
             }
             return result;
+        }
+
+        /// <summary>Covers the GIF writer: file shape, transparency, palette accuracy and the export entry point.</summary>
+        static void CheckGif()
+        {
+            // two colours and a transparent corner
+            int[] pixels = new int[40 * 40];
+            for (int y = 0; y < 40; y++)
+                for (int x = 0; x < 40; x++)
+                    pixels[y * 40 + x] = x < 20 ? unchecked((int)0xFFFF0000) : unchecked((int)0xFF00FF00);
+            pixels[0] = 0;
+
+            byte[] gif = GifWriter.Encode(pixels, 40, 40);
+            Check("gif export starts with the GIF89a signature",
+                gif.Length > 13 && gif[0] == 'G' && gif[1] == 'I' && gif[2] == 'F' &&
+                gif[3] == '8' && gif[4] == '9' && gif[5] == 'a');
+            Check("gif export declares the 40 x 40 canvas",
+                gif[6] == 40 && gif[7] == 0 && gif[8] == 40 && gif[9] == 0);
+
+            using (MemoryStream ms = new MemoryStream(gif))
+            using (Image img = Image.FromStream(ms))
+            using (Bitmap bmp = new Bitmap(img))
+            {
+                Check("gif export decodes to 40 x 40", bmp.Width == 40 && bmp.Height == 40);
+                Check("gif export keeps transparent pixels transparent", bmp.GetPixel(0, 0).A == 0);
+                Check("gif export keeps the opaque colours exactly",
+                    bmp.GetPixel(5, 5).ToArgb() == unchecked((int)0xFFFF0000) &&
+                    bmp.GetPixel(25, 5).ToArgb() == unchecked((int)0xFF00FF00));
+            }
+
+            // 1,600 unique colours are more than one palette holds, so median cut has to help
+            int[] many = new int[40 * 40];
+            for (int y = 0; y < 40; y++)
+                for (int x = 0; x < 40; x++)
+                    many[y * 40 + x] = unchecked((int)0xFF000000) |
+                        ((x * 6) << 16) | ((y * 6) << 8) | ((x + y) * 3);
+
+            byte[] busy = GifWriter.Encode(many, 40, 40);
+            using (MemoryStream ms = new MemoryStream(busy))
+            using (Image img = Image.FromStream(ms))
+            using (Bitmap bmp = new Bitmap(img))
+            {
+                bool opaque = true;
+                int worst = 0;
+                for (int y = 0; y < 40; y++)
+                    for (int x = 0; x < 40; x++)
+                    {
+                        Color got = bmp.GetPixel(x, y);
+                        Color want = Color.FromArgb(many[y * 40 + x]);
+                        if (got.A != 255) opaque = false;
+                        worst = Math.Max(worst, Math.Abs(got.R - want.R));
+                        worst = Math.Max(worst, Math.Abs(got.G - want.G));
+                        worst = Math.Max(worst, Math.Abs(got.B - want.B));
+                    }
+                Check("gif export keeps a busy badge opaque", opaque);
+                Check("gif export quantizes 1,600 colours within tolerance" +
+                    (worst == 0 ? "" : " (worst channel off by " + worst + ")"), worst <= 32);
+            }
+
+            string tmp = Path.Combine(Path.GetTempPath(), "habbo-gif-selftest-" + Guid.NewGuid().ToString("N") + ".gif");
+            try
+            {
+                using (Bitmap bmp = new Bitmap(40, 40, PixelFormat.Format32bppArgb))
+                {
+                    using (Graphics g = Graphics.FromImage(bmp))
+                    {
+                        g.Clear(Color.Transparent);
+                        using (SolidBrush b = new SolidBrush(Color.FromArgb(255, 0xF5, 0xA6, 0x23)))
+                            g.FillRectangle(b, 8, 8, 24, 24);
+                    }
+                    Store.ExportGif(bmp, tmp);
+                }
+                Check("gif export writes a file from a bitmap",
+                    File.Exists(tmp) && new FileInfo(tmp).Length > 100 &&
+                    File.ReadAllBytes(tmp)[0] == 'G');
+            }
+            finally
+            {
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+            }
+
+            Check("export format follows the chosen file type",
+                MainForm.ExportingGif("badge.gif", 1) &&
+                !MainForm.ExportingGif("badge.png", 2) &&
+                MainForm.ExportingGif("badge", 2) &&
+                !MainForm.ExportingGif("badge", 1));
         }
 
         static void CheckDiscord()

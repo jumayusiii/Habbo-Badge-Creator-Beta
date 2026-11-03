@@ -45,12 +45,12 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **Beta: layers** — up to 5 layers, each with its own name, visibility, **opacity slider**, **lock** and **blend mode** (Normal, Multiply, Screen), plus add, duplicate, merge down, move up/down, delete and flatten (`Ctrl+L`); double-click a layer to rename it inline
 - **Arrow keys** nudge the active layer by 1 px, `Shift`+arrow by 5 px
 - **Beta: rotate** the whole badge 90° clockwise (`R`) or anticlockwise (`Shift`+`R`)
-- **Beta: copy to clipboard** — send the finished 40 × 40 badge straight into Discord, Paint or any other app with the button next to Export PNG (`Ctrl`+`Shift`+`C`)
+- **Beta: copy to clipboard** — send the finished 40 × 40 badge straight into Discord, Paint or any other app with the button next to **Export** (`Ctrl`+`Shift`+`C`)
 - **Beta: Performance mode** in Settings — the finished canvas is cached, a repaint copies just the  visible area and a stroke patches only the cells it crosses: roughly a tenth of the painting per mouse move, lower CPU load and less input lag
 - **28 colour palette** plus the app's own colour sheet (beta) — saturation/value square, hue rail, hex value and live R/G/B for any colour, drawn in whichever theme is active
 - **Undo / redo** (80 steps), right-click always erases
 - **Import** PNG / GIF / JPG / BMP (button or drag the file onto the window) — auto-scaled to 40 × 40
-- **Export PNG** at exactly 40 × 40 with a transparent background
+- **Export PNG or GIF** at exactly 40 × 40 with a transparent background — the save dialog offers both file types, and the **beta** GIF comes from the app's own GIF89a writer: an exact palette up to 255 colours, median cut above that, and one transparent index so the background still drops out
 - **My badges library** — every saved badge is listed with its preview; click to load it again. While the library is empty it collapses to a slim bar, giving the badge details card the extra room
 - **Autosave** — your work in progress is restored the next time you open the app
 - **Live painting** — the canvas and preview follow the cursor pixel by pixel while you drag
@@ -133,6 +133,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.25 | 3 Nov 2026 | **Beta:** GIF export — **Export** offers PNG and GIF, and `Ctrl`+`Shift`+`G` opens the dialog on GIF. The app writes a real 40 × 40 GIF89a itself, keeping the transparent background and quantizing only badges with more than 255 colours |
 | 1.4.5-beta.24 | 27 Oct 2026 | **Beta:** layout checked at 125 % and 150 % scaling — editor and sheets scale cleanly; fixed the German blend label, which was cut mid-word in the layer panel |
 | 1.4.5-beta.23 | 27 Oct 2026 | **Beta:** fixed badge deletion — the delete sheet's fade-out dropped the confirmed result, so pressing **Delete** closed the sheet but kept the badge; the fade now restores the result before closing |
 | 1.4.5-beta.22 | 27 Oct 2026 | **Beta:** themed delete and message sheets — badge thumbnail, danger button and palette-aware chrome replace Windows' stock message box for badge deletion and import/export errors |
@@ -223,7 +224,8 @@ field is empty.
 | `Alt` + `↑` / `↓` | Move the active layer up / down the stack |
 | `Ctrl` + `Z` / `Y` | Undo / Redo |
 | `Ctrl` + `S` | Save badge to the library |
-| `Ctrl` + `E` | Export PNG |
+| `Ctrl` + `E` | Export PNG (or GIF, chosen in the save dialog) |
+| `Ctrl` + `Shift` + `G` | Export GIF |
 | `Ctrl` + `O` | Import image |
 | `Ctrl` + `+` / `-` | Zoom in / out |
 | `0` | Fit canvas |

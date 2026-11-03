@@ -240,8 +240,8 @@ namespace HabboBadgeCreator
             btnSave.Click += delegate { SaveBadge(); };
             Controls.Add(btnSave);
 
-            btnExport = MakeBtn(L.T("Export PNG", "PNG exportieren"), "download", false);
-            btnExport.Click += delegate { ExportPng(); };
+            btnExport = MakeBtn(L.T("Export", "Exportieren"), "download", false);
+            btnExport.Click += delegate { ExportImage(false); };
             Controls.Add(btnExport);
 
             // beta: one click to put the 40 x 40 badge on the clipboard
@@ -938,7 +938,7 @@ namespace HabboBadgeCreator
             btnImport.Label = L.T("Import image", "Bild importieren");
             btnClear.Label = L.T("Clear", "Leeren");
             btnSave.Label = L.T("Save badge", "Badge speichern");
-            btnExport.Label = L.T("Export PNG", "PNG exportieren");
+            btnExport.Label = L.T("Export", "Exportieren");
             btnOpenFolder.Label = L.T("Open folder", "Ordner öffnen");
             changelogChip.Label = L.T("Changelog", "Änderungen");
             changelogChip.Invalidate();
@@ -1151,15 +1151,22 @@ namespace HabboBadgeCreator
             ShowToast(L.F("Saved \"{0}\" to My badges", "\"{0}\" in Meine Badges gespeichert", name));
         }
 
-        void ExportPng()
+        /// <summary>
+        /// Exports the badge as PNG or GIF. The file type chosen in the save dialog decides,
+        /// so Ctrl+Shift+G opens the same dialog already switched to GIF.
+        /// </summary>
+        void ExportImage(bool preferGif)
         {
             if (doc.IsBlank()) { ShowToast(L.T("Draw something first", "Zeichne zuerst etwas")); return; }
             using (SaveFileDialog dlg = new SaveFileDialog())
             {
-                dlg.Title = L.T("Export badge as PNG", "Badge als PNG exportieren");
-                dlg.Filter = L.T("PNG image (*.png)|*.png", "PNG-Bild (*.png)|*.png");
-                dlg.DefaultExt = "png";
-                dlg.FileName = Store.SafeName(nameField.Value.Length > 0 ? nameField.Value : "habbo-badge") + ".png";
+                dlg.Title = L.T("Export badge", "Badge exportieren");
+                dlg.Filter = L.T("PNG image (*.png)|*.png|GIF image (*.gif)|*.gif",
+                                 "PNG-Bild (*.png)|*.png|GIF-Bild (*.gif)|*.gif");
+                dlg.FilterIndex = preferGif ? 2 : 1;
+                dlg.DefaultExt = preferGif ? "gif" : "png";
+                dlg.FileName = Store.SafeName(nameField.Value.Length > 0 ? nameField.Value : "habbo-badge") +
+                               (preferGif ? ".gif" : ".png");
                 try
                 {
                     string desk = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
@@ -1170,7 +1177,10 @@ namespace HabboBadgeCreator
                 try
                 {
                     using (Bitmap bmp = doc.ToBitmap())
-                        Store.ExportPng(bmp, dlg.FileName);
+                    {
+                        if (ExportingGif(dlg.FileName, dlg.FilterIndex)) Store.ExportGif(bmp, dlg.FileName);
+                        else Store.ExportPng(bmp, dlg.FileName);
+                    }
                     ShowToast(L.F("Exported {0}", "{0} exportiert", Path.GetFileName(dlg.FileName)));
                 }
                 catch (Exception ex)
@@ -1181,6 +1191,15 @@ namespace HabboBadgeCreator
                         ex.Message);
                 }
             }
+        }
+
+        /// <summary>GIF when the file name says so; an extensionless name follows the chosen file type.</summary>
+        internal static bool ExportingGif(string path, int filterIndex)
+        {
+            string ext = Path.GetExtension(path == null ? "" : path);
+            if (string.Equals(ext, ".gif", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(ext, ".png", StringComparison.OrdinalIgnoreCase)) return false;
+            return filterIndex == 2;
         }
 
         void ImportImage(string path)
@@ -1362,7 +1381,8 @@ namespace HabboBadgeCreator
                 switch (k)
                 {
                     case Keys.S: SaveBadge(); return true;
-                    case Keys.E: ExportPng(); return true;
+                    case Keys.E: ExportImage(false); return true;
+                    case Keys.G: if (shift) { ExportImage(true); return true; } break;
                     case Keys.O: OpenImportDialog(); return true;
                     case Keys.J: LayerAction(LayersPanel.SlotCopy); return true;
                     case Keys.M: LayerAction(LayersPanel.SlotMerge); return true;
