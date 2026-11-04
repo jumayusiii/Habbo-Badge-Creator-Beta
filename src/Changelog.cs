@@ -9,13 +9,32 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.25";
-        public const string Build = "2026-11-03.25";
-        public const string Date = "3 November 2026";
+        public const string Version = "1.4.5-beta.26";
+        public const string Build = "2026-11-04.26";
+        public const string Date = "4 November 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.26", "4 Nov 2026",
+                "Move a layer, five export formats",
+                "Ebene verschieben, fünf Export-Formate",
+                new string[]
+                {
+                    "New alpha tool: Move layer. Pick it in the toolbar or press V, then drag on the canvas — the active layer's pixels follow the mouse, so a shape drawn two pixels off is put right without redrawing it. The whole drag is one undo step, and a click that never moves leaves none.",
+                    "Locked layers refuse to move exactly like they refuse to paint, and the drag clips at the 40 × 40 edge; arrow keys still nudge by one pixel or five with Shift.",
+                    "The save dialog now offers five file types. PNG and GIF keep their transparent background, JPEG is flattened onto white because the format has no transparency, ICO is written as a Windows icon with 16, 32, 48 and 64 px entries, and SVG becomes a real 40 × 40 vector with one rect per horizontal colour run.",
+                    "The typed extension picks the writer, so badge.svg written through the PNG entry still leaves an SVG behind; with no extension the chosen dialog entry decides, exactly as GIF did before.",
+                    "Nine new self-test checks cover the SVG markup and its skipped transparent pixels, the ICO header and 32bpp DIB entries, the JPEG white flattening and the five-way file-type choice."
+                },
+                new string[]
+                {
+                    "Neues Alpha-Werkzeug: Ebene verschieben. In der Werkzeugleiste wählen oder V drücken und auf der Zeichenfläche ziehen – die Pixel der aktiven Ebene folgen der Maus, ein zwei Pixel zu weit geratenes Motiv ist damit ohne Neuzeichnen geradegerückt. Der ganze Zug ist ein einziger Rückgängig-Schritt, ein Klick ohne Bewegung hinterlässt keinen.",
+                    "Gesperrte Ebenen lassen sich nicht verschieben, so wie sie sich nicht bemalen lassen; am 40 × 40-Rand wird abgeschnitten. Die Pfeiltasten verschieben weiterhin um ein Pixel, mit Shift um fünf.",
+                    "Der Speichern-Dialog bietet jetzt fünf Dateitypen. PNG und GIF behalten den transparenten Hintergrund, JPEG wird auf Weiß gelegt, weil das Format keine Transparenz kennt, ICO wird als Windows-Symbol mit Einträgen für 16, 32, 48 und 64 px geschrieben, und SVG wird eine echte 40 × 40-Vektorgrafik mit einem Rechteck je horizontalem Farbverlauf.",
+                    "Die getippte Endung bestimmt den Schreiber: badge.svg über den PNG-Eintrag geschrieben ergibt trotzdem eine SVG-Datei; ohne Endung entscheidet wie bisher der gewählte Dialog-Eintrag.",
+                    "Neun neue Selbsttest-Prüfungen decken die SVG-Auszeichnung und ihre ausgelassenen transparenten Pixel, den ICO-Kopf und die 32-bpp-DIB-Einträge, das Weiß-Füllen des JPEG und die Auswahl unter fünf Dateitypen ab."
+                }),
             new ReleaseNote("1.4.5-beta.25", "3 Nov 2026",
                 "GIF export",
                 "GIF-Export",

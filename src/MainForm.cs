@@ -23,7 +23,7 @@ namespace HabboBadgeCreator
         GalleryView gallery;
         PreviewView previewBig;
         FlatBtn btnSave, btnExport, btnClear, btnImport, btnOpenFolder;
-        IconBtn tPencil, tEraser, tFill, tPicker, tMirror, tFlipH, tFlipV, tRotate, tGrid, tCentre, tLayers, tUndo, tRedo, tZoomIn, tZoomOut;
+        IconBtn tPencil, tEraser, tFill, tPicker, tMove, tMirror, tFlipH, tFlipV, tRotate, tGrid, tCentre, tLayers, tUndo, tRedo, tZoomIn, tZoomOut;
         IconBtn btnCopyBadge;
         LayersPanel layersPanel;
         BetaTag betaTag;
@@ -183,6 +183,7 @@ namespace HabboBadgeCreator
             tEraser = MakeTool("eraser", "Eraser");
             tFill = MakeTool("bucket", "Fill");
             tPicker = MakeTool("picker", "Colour picker");
+            tMove = MakeTool("move", "Move layer");
             tMirror = MakeToggle("mirror", "Mirror");
             tFlipH = MakeTool("flipH", "Flip horizontally");
             tFlipV = MakeTool("flipV", "Flip vertically");
@@ -201,6 +202,7 @@ namespace HabboBadgeCreator
             tEraser.Click += delegate { SetTool(1); };
             tFill.Click += delegate { SetTool(2); };
             tPicker.Click += delegate { SetTool(3); };
+            tMove.Click += delegate { SetTool(4); };
             tMirror.Click += delegate { ToggleMirror(); };
             tFlipH.Click += delegate { FlipCanvas(true); };
             tFlipV.Click += delegate { FlipCanvas(false); };
@@ -265,7 +267,7 @@ namespace HabboBadgeCreator
             wbMax.Click += delegate { ToggleMaximize(); };
             Controls.Add(wbMax);
 
-            IconBtn[] segmented = new IconBtn[] { tPencil, tEraser, tFill, tPicker, tMirror, tFlipH, tFlipV, tRotate, tUndo, tRedo, tZoomIn, tZoomOut, tGrid, tCentre, tLayers };
+            IconBtn[] segmented = new IconBtn[] { tPencil, tEraser, tFill, tPicker, tMove, tMirror, tFlipH, tFlipV, tRotate, tUndo, tRedo, tZoomIn, tZoomOut, tGrid, tCentre, tLayers };
             foreach (IconBtn sb in segmented)
             {
                 sb.Segmented = true;
@@ -461,37 +463,41 @@ namespace HabboBadgeCreator
             btnImport.SetBounds(btnClear.Left - T.P(8) - iw2, btnClear.Top, iw2, btnH);
 
             int bodyY = rCardL.Y + headH + T.P(10);
-            int gh = T.P(36), b = T.P(28), inset = T.P(4), bgap = T.P(2), ggap = T.P(6);
+            // the move tool makes five buttons in the first group; 26 px keeps every group on
+            // one row at the minimum window width instead of letting the grid group collide
+            int gh = T.P(36), b = T.P(26), inset = T.P(4), bgap = T.P(2), ggap = T.P(6);
+            int btnY = bodyY + (gh - b) / 2;
             int x = cx;
-            rGroupTools = new Rectangle(x, bodyY, inset * 2 + b * 4 + bgap * 3, gh);
+            rGroupTools = new Rectangle(x, bodyY, inset * 2 + b * 5 + bgap * 4, gh);
             int bx = x + inset;
-            tPencil.SetBounds(bx, bodyY + inset, b, b); bx += b + bgap;
-            tEraser.SetBounds(bx, bodyY + inset, b, b); bx += b + bgap;
-            tFill.SetBounds(bx, bodyY + inset, b, b); bx += b + bgap;
-            tPicker.SetBounds(bx, bodyY + inset, b, b);
+            tPencil.SetBounds(bx, btnY, b, b); bx += b + bgap;
+            tEraser.SetBounds(bx, btnY, b, b); bx += b + bgap;
+            tFill.SetBounds(bx, btnY, b, b); bx += b + bgap;
+            tPicker.SetBounds(bx, btnY, b, b); bx += b + bgap;
+            tMove.SetBounds(bx, btnY, b, b);
             x = rGroupTools.Right + ggap;
 
             rGroupMirror = new Rectangle(x, bodyY, inset * 2 + b * 4 + bgap * 3, gh);
-            tMirror.SetBounds(x + inset, bodyY + inset, b, b);
-            tFlipH.SetBounds(tMirror.Right + bgap, bodyY + inset, b, b);
-            tFlipV.SetBounds(tFlipH.Right + bgap, bodyY + inset, b, b);
-            tRotate.SetBounds(tFlipV.Right + bgap, bodyY + inset, b, b);
+            tMirror.SetBounds(x + inset, btnY, b, b);
+            tFlipH.SetBounds(tMirror.Right + bgap, btnY, b, b);
+            tFlipV.SetBounds(tFlipH.Right + bgap, btnY, b, b);
+            tRotate.SetBounds(tFlipV.Right + bgap, btnY, b, b);
             x = rGroupMirror.Right + ggap;
 
             rGroupHistory = new Rectangle(x, bodyY, inset * 2 + b * 2 + bgap, gh);
             bx = x + inset;
-            tUndo.SetBounds(bx, bodyY + inset, b, b); bx += b + bgap;
-            tRedo.SetBounds(bx, bodyY + inset, b, b);
+            tUndo.SetBounds(bx, btnY, b, b); bx += b + bgap;
+            tRedo.SetBounds(bx, btnY, b, b);
 
             int rx = cx + innerW;
             rGroupGrid = new Rectangle(rx - (inset * 2 + b * 3 + bgap * 2), bodyY, inset * 2 + b * 3 + bgap * 2, gh);
-            tGrid.SetBounds(rGroupGrid.X + inset, bodyY + inset, b, b);
-            tCentre.SetBounds(tGrid.Right + bgap, bodyY + inset, b, b);
-            tLayers.SetBounds(tCentre.Right + bgap, bodyY + inset, b, b);
+            tGrid.SetBounds(rGroupGrid.X + inset, btnY, b, b);
+            tCentre.SetBounds(tGrid.Right + bgap, btnY, b, b);
+            tLayers.SetBounds(tCentre.Right + bgap, btnY, b, b);
             int zw = T.P(38);
             rGroupZoom = new Rectangle(rGroupGrid.Left - ggap - (inset * 2 + b * 2 + zw), bodyY, inset * 2 + b * 2 + zw, gh);
-            tZoomOut.SetBounds(rGroupZoom.X + inset, bodyY + inset, b, b);
-            tZoomIn.SetBounds(rGroupZoom.Right - inset - b, bodyY + inset, b, b);
+            tZoomOut.SetBounds(rGroupZoom.X + inset, btnY, b, b);
+            tZoomIn.SetBounds(rGroupZoom.Right - inset - b, btnY, b, b);
 
             // ---- palette
             int sw = T.P(22), sg = T.P(6);
@@ -599,7 +605,9 @@ namespace HabboBadgeCreator
             tEraser.Active = (tool == 1);
             tFill.Active = (tool == 2);
             tPicker.Active = (tool == 3);
-            tPencil.Invalidate(); tEraser.Invalidate(); tFill.Invalidate(); tPicker.Invalidate();
+            tMove.Active = (tool == 4);
+            tPencil.Invalidate(); tEraser.Invalidate(); tFill.Invalidate();
+            tPicker.Invalidate(); tMove.Invalidate();
             tUndo.Invalidate();
             tRedo.Invalidate();
             canvas.Invalidate();
@@ -960,6 +968,7 @@ namespace HabboBadgeCreator
             SetTip(tEraser, L.T("Eraser", "Radierer"), "E");
             SetTip(tFill, L.T("Fill", "Füllen"), "G");
             SetTip(tPicker, L.T("Colour picker", "Pipette"), "I");
+            SetTip(tMove, L.T("Move layer (alpha)", "Ebene verschieben (Alpha)"), "V");
             SetTip(tMirror, L.T("Mirror drawing", "Spiegelzeichnen"), "M");
             SetTip(tFlipH, L.T("Flip horizontally", "Horizontal spiegeln"), "Shift+H");
             SetTip(tFlipV, L.T("Flip vertically", "Vertikal spiegeln"), "Shift+V");
@@ -1152,8 +1161,8 @@ namespace HabboBadgeCreator
         }
 
         /// <summary>
-        /// Exports the badge as PNG or GIF. The file type chosen in the save dialog decides,
-        /// so Ctrl+Shift+G opens the same dialog already switched to GIF.
+        /// Exports the badge. The file type chosen in the save dialog decides the writer: PNG,
+        /// GIF, JPEG, ICO or SVG. Ctrl+Shift+G opens the same dialog already switched to GIF.
         /// </summary>
         void ExportImage(bool preferGif)
         {
@@ -1161,8 +1170,9 @@ namespace HabboBadgeCreator
             using (SaveFileDialog dlg = new SaveFileDialog())
             {
                 dlg.Title = L.T("Export badge", "Badge exportieren");
-                dlg.Filter = L.T("PNG image (*.png)|*.png|GIF image (*.gif)|*.gif",
-                                 "PNG-Bild (*.png)|*.png|GIF-Bild (*.gif)|*.gif");
+                dlg.Filter = L.T(
+                    "PNG image (*.png)|*.png|GIF image (*.gif)|*.gif|JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg|Windows icon (*.ico)|*.ico|SVG graphic (*.svg)|*.svg",
+                    "PNG-Bild (*.png)|*.png|GIF-Bild (*.gif)|*.gif|JPEG-Bild (*.jpg;*.jpeg)|*.jpg;*.jpeg|Windows-Symbol (*.ico)|*.ico|SVG-Grafik (*.svg)|*.svg");
                 dlg.FilterIndex = preferGif ? 2 : 1;
                 dlg.DefaultExt = preferGif ? "gif" : "png";
                 dlg.FileName = Store.SafeName(nameField.Value.Length > 0 ? nameField.Value : "habbo-badge") +
@@ -1178,8 +1188,14 @@ namespace HabboBadgeCreator
                 {
                     using (Bitmap bmp = doc.ToBitmap())
                     {
-                        if (ExportingGif(dlg.FileName, dlg.FilterIndex)) Store.ExportGif(bmp, dlg.FileName);
-                        else Store.ExportPng(bmp, dlg.FileName);
+                        switch (Store.KindFor(dlg.FileName, dlg.FilterIndex))
+                        {
+                            case Store.ExportKind.Gif: Store.ExportGif(bmp, dlg.FileName); break;
+                            case Store.ExportKind.Jpeg: Store.ExportJpeg(bmp, dlg.FileName); break;
+                            case Store.ExportKind.Ico: Store.ExportIco(bmp, dlg.FileName); break;
+                            case Store.ExportKind.Svg: Store.ExportSvg(bmp, dlg.FileName); break;
+                            default: Store.ExportPng(bmp, dlg.FileName); break;
+                        }
                     }
                     ShowToast(L.F("Exported {0}", "{0} exportiert", Path.GetFileName(dlg.FileName)));
                 }
@@ -1191,15 +1207,6 @@ namespace HabboBadgeCreator
                         ex.Message);
                 }
             }
-        }
-
-        /// <summary>GIF when the file name says so; an extensionless name follows the chosen file type.</summary>
-        internal static bool ExportingGif(string path, int filterIndex)
-        {
-            string ext = Path.GetExtension(path == null ? "" : path);
-            if (string.Equals(ext, ".gif", StringComparison.OrdinalIgnoreCase)) return true;
-            if (string.Equals(ext, ".png", StringComparison.OrdinalIgnoreCase)) return false;
-            return filterIndex == 2;
         }
 
         void ImportImage(string path)
@@ -1429,6 +1436,7 @@ namespace HabboBadgeCreator
                 case Keys.E: SetTool(1); return true;
                 case Keys.G: SetTool(2); return true;
                 case Keys.I: SetTool(3); return true;
+                case Keys.V: SetTool(4); return true;
                 case Keys.M: ToggleMirror(); return true;
                 case Keys.C: CycleGuides(); return true;
                 case Keys.R: RotateCanvas(true); return true;

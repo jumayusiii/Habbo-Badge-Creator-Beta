@@ -43,6 +43,7 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **Guides** cycle through centre, rule of thirds and quarters (`C`)
 - **Flip the canvas** left/right or top/bottom in one undoable step (`Shift+H` / `Shift+V`)
 - **Beta: layers** — up to 5 layers, each with its own name, visibility, **opacity slider**, **lock** and **blend mode** (Normal, Multiply, Screen), plus add, duplicate, merge down, move up/down, delete and flatten (`Ctrl+L`); double-click a layer to rename it inline
+- **Alpha: move a layer** — pick the **Move** tool in the toolbar (`V`) and drag on the canvas: the active layer's pixels follow the cursor in a single undoable step, so a shape drawn two pixels off can be shifted without redrawing it
 - **Arrow keys** nudge the active layer by 1 px, `Shift`+arrow by 5 px
 - **Beta: rotate** the whole badge 90° clockwise (`R`) or anticlockwise (`Shift`+`R`)
 - **Beta: copy to clipboard** — send the finished 40 × 40 badge straight into Discord, Paint or any other app with the button next to **Export** (`Ctrl`+`Shift`+`C`)
@@ -50,7 +51,7 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **28 colour palette** plus the app's own colour sheet (beta) — saturation/value square, hue rail, hex value and live R/G/B for any colour, drawn in whichever theme is active
 - **Undo / redo** (80 steps), right-click always erases
 - **Import** PNG / GIF / JPG / BMP (button or drag the file onto the window) — auto-scaled to 40 × 40
-- **Export PNG or GIF** at exactly 40 × 40 with a transparent background — the save dialog offers both file types, and the **beta** GIF comes from the app's own GIF89a writer: an exact palette up to 255 colours, median cut above that, and one transparent index so the background still drops out
+- **Export PNG, GIF, JPEG, ICO or SVG** at exactly 40 × 40 — every file type is written by the app itself: transparent PNG, the **beta** GIF89a (exact palette up to 255 colours, median cut above that, one transparent index), JPEG flattened onto white, a 16/32/48/64 px Windows icon, and an SVG with one rect per horizontal colour run
 - **My badges library** — every saved badge is listed with its preview; click to load it again. While the library is empty it collapses to a slim bar, giving the badge details card the extra room
 - **Autosave** — your work in progress is restored the next time you open the app
 - **Live painting** — the canvas and preview follow the cursor pixel by pixel while you drag
@@ -133,6 +134,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.26 | 4 Nov 2026 | **Alpha:** drag the active layer with the new **Move** tool (`V`) — one undo step for the whole drag. **Export** now writes PNG, GIF, JPEG, ICO and SVG, each from the app's own writer |
 | 1.4.5-beta.25 | 3 Nov 2026 | **Beta:** GIF export — **Export** offers PNG and GIF, and `Ctrl`+`Shift`+`G` opens the dialog on GIF. The app writes a real 40 × 40 GIF89a itself, keeping the transparent background and quantizing only badges with more than 255 colours |
 | 1.4.5-beta.24 | 27 Oct 2026 | **Beta:** layout checked at 125 % and 150 % scaling — editor and sheets scale cleanly; fixed the German blend label, which was cut mid-word in the layer panel |
 | 1.4.5-beta.23 | 27 Oct 2026 | **Beta:** fixed badge deletion — the delete sheet's fade-out dropped the confirmed result, so pressing **Delete** closed the sheet but kept the badge; the fade now restores the result before closing |
@@ -224,7 +226,8 @@ field is empty.
 | `Alt` + `↑` / `↓` | Move the active layer up / down the stack |
 | `Ctrl` + `Z` / `Y` | Undo / Redo |
 | `Ctrl` + `S` | Save badge to the library |
-| `Ctrl` + `E` | Export PNG (or GIF, chosen in the save dialog) |
+| `V` | Move the active layer (alpha) |
+| `Ctrl` + `E` | Export image (format chosen in the save dialog) |
 | `Ctrl` + `Shift` + `G` | Export GIF |
 | `Ctrl` + `O` | Import image |
 | `Ctrl` + `+` / `-` | Zoom in / out |
@@ -287,6 +290,7 @@ build.bat
 | --- | --- |
 | `src/Theme.cs` | dark, light, navy and custom palettes, fonts, GDI+ helpers, vector icon set |
 | `src/PixelDoc.cs` | 40 × 40 pixel document, layers, presets, undo history, PNG scaling, badge storage |
+| `src/Exporters.cs` | SVG and multi-size ICO writers for the export formats |
 | `src/Controls.cs` | custom drawn buttons, inputs, canvas, preview, badge list |
 | `src/MainForm.cs` | window layout, tools, shortcuts, window chrome |
 | `src/SettingsForm.cs` | settings sheet: appearance, performance and Discord Rich Presence |

@@ -1321,7 +1321,14 @@ namespace HabboBadgeCreator
     {
         public PixelDoc Doc;
         public Color DrawColor = Color.Black;
-        public int Tool; // 0 pencil, 1 eraser, 2 fill, 3 picker
+        int tool; // 0 pencil, 1 eraser, 2 fill, 3 picker, 4 move (alpha)
+
+        /// <summary>Active canvas tool; the move tool drags the active layer and gets its own cursor.</summary>
+        public int Tool
+        {
+            get { return tool; }
+            set { tool = value; Cursor = value == 4 ? Cursors.SizeAll : Cursors.Cross; }
+        }
         public bool Mirror = false;
         public bool ShowGrid = true;
         public int Guides = 0;   // 0 off, 1 centre, 2 thirds, 3 quarters
@@ -1353,6 +1360,9 @@ namespace HabboBadgeCreator
 
         bool drawing;
         Point last;
+        bool moving;          // alpha: the active layer is being dragged
+        Point moveStart;
+        int moveDX, moveDY;
         int hx = -1, hy = -1;
         Region strokeDirty;   // cells repainted since the stroke began
         readonly List<Rectangle> scratch = new List<Rectangle>();
@@ -1494,7 +1504,7 @@ namespace HabboBadgeCreator
 
         void DrawHover(Graphics g)
         {
-            if (hx < 0 || drawing || Doc == null) return;
+            if (hx < 0 || drawing || moving || Doc == null) return;
             Rectangle r = CanvasRect();
             using (Pen p = new Pen(T.HoverOutline, 1.5f))
                 g.DrawRectangle(p, r.X + hx * zoom, r.Y + hy * zoom, zoom - 1, zoom - 1);
@@ -1849,6 +1859,18 @@ namespace HabboBadgeCreator
                 if (LockedAttempt != null) LockedAttempt();
                 return;
             }
+            if (Tool == 4)
+            {
+                if (erase) return;
+                if (Doc.BeginLayerMove())
+                {
+                    moving = true;
+                    moveStart = c;
+                    moveDX = 0;
+                    moveDY = 0;
+                }
+                return;
+            }
             if (Tool == 2 && !erase)
             {
                 selfWrite = true;
@@ -1890,6 +1912,18 @@ namespace HabboBadgeCreator
             base.OnMouseMove(e);
             Point c;
             bool inCell = Cell(e.Location, out c);
+            if (moving && Doc != null && inCell)
+            {
+                int dx = c.X - moveStart.X, dy = c.Y - moveStart.Y;
+                if (dx != moveDX || dy != moveDY)
+                {
+                    Doc.MoveLayerLive(dx, dy);
+                    moveDX = dx;
+                    moveDY = dy;
+                    Invalidate();
+                }
+                return;
+            }
             if (drawing && Doc != null && inCell)
             {
                 int fromX = last.X, fromY = last.Y;
@@ -1959,6 +1993,7 @@ namespace HabboBadgeCreator
         {
             base.OnMouseUp(e);
             Capture = false;
+            EndMove();
             EndDraw();
         }
 
@@ -1977,7 +2012,17 @@ namespace HabboBadgeCreator
         protected override void OnLostFocus(EventArgs e)
         {
             base.OnLostFocus(e);
+            EndMove();
             EndDraw();
+        }
+
+        /// <summary>Finishes an alpha move drag; the whole drag stays one undo step.</summary>
+        void EndMove()
+        {
+            if (!moving) return;
+            moving = false;
+            if (Doc != null) Doc.EndLayerMove();
+            Invalidate();
         }
 
         void EndDraw()

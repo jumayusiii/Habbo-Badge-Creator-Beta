@@ -772,6 +772,7 @@ namespace HabboBadgeCreator
             CheckPickers();
             CheckMessageSheets();
             CheckGif();
+            CheckExporters();
             CheckDiscord();
             CheckPortal();
 
@@ -1143,10 +1144,79 @@ namespace HabboBadgeCreator
             }
 
             Check("export format follows the chosen file type",
-                MainForm.ExportingGif("badge.gif", 1) &&
-                !MainForm.ExportingGif("badge.png", 2) &&
-                MainForm.ExportingGif("badge", 2) &&
-                !MainForm.ExportingGif("badge", 1));
+                Store.KindFor("badge.gif", 1) == Store.ExportKind.Gif &&
+                Store.KindFor("badge.png", 2) == Store.ExportKind.Png &&
+                Store.KindFor("badge", 2) == Store.ExportKind.Gif &&
+                Store.KindFor("badge", 1) == Store.ExportKind.Png &&
+                Store.KindFor("badge.jpg", 1) == Store.ExportKind.Jpeg &&
+                Store.KindFor("badge.JPEG", 1) == Store.ExportKind.Jpeg &&
+                Store.KindFor("badge.ico", 1) == Store.ExportKind.Ico &&
+                Store.KindFor("badge.svg", 1) == Store.ExportKind.Svg);
+        }
+
+        /// <summary>SVG, ICO and JPEG come from writers of their own, so each one is read back.</summary>
+        static void CheckExporters()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "habbo-export-selftest-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                using (Bitmap bmp = new Bitmap(40, 40, PixelFormat.Format32bppArgb))
+                {
+                    using (Graphics g = Graphics.FromImage(bmp))
+                    {
+                        g.Clear(Color.Transparent);
+                        using (SolidBrush b = new SolidBrush(Color.FromArgb(255, 0xF5, 0xA6, 0x23)))
+                            g.FillRectangle(b, 10, 10, 20, 20);
+                    }
+
+                    string svg = Path.Combine(dir, "badge.svg");
+                    Store.ExportSvg(bmp, svg);
+                    string markup = File.ReadAllText(svg);
+                    Check("svg export writes a 40 x 40 vector badge",
+                        markup.IndexOf("viewBox=\"0 0 40 40\"", StringComparison.Ordinal) >= 0 &&
+                        markup.IndexOf("#F5A623", StringComparison.Ordinal) >= 0 &&
+                        markup.IndexOf("width=\"20\"", StringComparison.Ordinal) >= 0 &&
+                        markup.IndexOf("</svg>", StringComparison.Ordinal) >= 0);
+                    // the 20 x 20 square is one run per row, and no transparent pixel gets a rect
+                    int rects = markup.Split(new string[] { "<rect" }, StringSplitOptions.None).Length - 1;
+                    Check("svg export leaves transparent pixels out",
+                        markup.IndexOf("opacity=", StringComparison.Ordinal) < 0 &&
+                        markup.IndexOf("x=\"0\" y=\"0\"", StringComparison.Ordinal) < 0 &&
+                        rects == 20);
+
+                    string ico = Path.Combine(dir, "badge.ico");
+                    Store.ExportIco(bmp, ico);
+                    byte[] icoBytes = File.ReadAllBytes(ico);
+                    Check("ico export writes a Windows icon",
+                        icoBytes.Length > 1000 && icoBytes[0] == 0 && icoBytes[1] == 0 &&
+                        icoBytes[2] == 1 && icoBytes[3] == 0 && icoBytes[4] == 4 && icoBytes[5] == 0);
+                    int dib = BitConverter.ToInt32(icoBytes, 6 + 12);
+                    Check("ico entries are 32bpp DIBs",
+                        dib > 0 && dib + 40 < icoBytes.Length &&
+                        BitConverter.ToInt32(icoBytes, dib) == 40 &&
+                        BitConverter.ToInt16(icoBytes, dib + 14) == 32);
+                    using (Icon icon = new Icon(ico))
+                        Check("ico reopens through the icon API", icon.Width >= 16 && icon.Height >= 16);
+
+                    string jpg = Path.Combine(dir, "badge.jpg");
+                    Store.ExportJpeg(bmp, jpg);
+                    byte[] head = File.ReadAllBytes(jpg);
+                    Check("jpeg export writes a JPEG",
+                        head.Length > 100 && head[0] == 0xFF && head[1] == 0xD8 && head[head.Length - 2] == 0xFF && head[head.Length - 1] == 0xD9);
+                    using (Image back = Image.FromFile(jpg))
+                    using (Bitmap flat = new Bitmap(back))
+                    {
+                        Color corner = flat.GetPixel(2, 2);
+                        Check("jpeg flattens transparency onto white",
+                            corner.R > 240 && corner.G > 240 && corner.B > 240);
+                    }
+                }
+            }
+            finally
+            {
+                try { Directory.Delete(dir, true); } catch { }
+            }
         }
 
         static void CheckDiscord()

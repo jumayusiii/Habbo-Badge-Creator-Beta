@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.25` |
+| Version | `1.4.5` | `1.4.5-beta.26` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -34,9 +34,14 @@ Both builds can run at the same time. They never read or write each other's gall
 - **Rotate and copy** — turn the artwork 90° clockwise (`R`) or anticlockwise (`Shift+R`), and
   copy the finished 40 × 40 badge to the clipboard with `Ctrl+Shift+C` or the button beside
   **Export**.
-- **GIF export** — the **Export** button's save dialog lists PNG and GIF; `Ctrl+Shift+G` opens it
-  already switched to GIF. The badge is written as a real 40 × 40 GIF89a with a reserved
-  transparent index, an exact palette up to 255 colours and median cut above that.
+- **Move layer (alpha)** — the **Move** tool (`V`) drags the active layer's pixels with the mouse
+  in one undoable step, so a shape can be corrected without redrawing it.
+- **More export formats** — **Export** writes PNG, GIF, JPEG, ICO or SVG. JPEG is flattened onto
+  white because the format has no transparency, ICO contains 16/32/48/64 px entries, and SVG is a
+  40 × 40 vector built from one rect per horizontal colour run.
+- **GIF export** — the **Export** button's save dialog lists PNG, GIF, JPEG, ICO and SVG;
+  `Ctrl+Shift+G` opens it already switched to GIF. The badge is written as a real 40 × 40 GIF89a
+  with a reserved transparent index, an exact palette up to 255 colours and median cut above that.
 - **Performance mode** — Settings → Performance. The finished canvas is cached, a repaint copies
   the visible area instead of redrawing everything, and a stroke patches only the cells it
   crosses: measured about 0.5–1 ms per mouse move instead of 7–10 ms, for less input lag and lower CPU load.
@@ -53,6 +58,20 @@ Both builds can run at the same time. They never read or write each other's gall
   Picking previews on the badge; **Cancel** puts the previous colour back.
 - **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
   a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.26
+
+Drag a layer into place. The new **Move** tool in the toolbar (`V`) picks up the active layer and
+lets it follow the mouse across the canvas, and the whole drag is a single undo step — a shape drawn
+two pixels off no longer has to be erased and redrawn. Locked layers refuse to move exactly like
+they refuse to paint, and the drag clips at the 40 × 40 edge.
+
+**Export** now offers five file types instead of two. **PNG** keeps the transparent background,
+**GIF** writes the app's own GIF89a, **JPEG** flattens the badge onto white because the format has
+no transparency, **ICO** produces a Windows icon with 16, 32, 48 and 64 px entries and crisp
+nearest-neighbour scaling, and **SVG** writes a real 40 × 40 vector made of one rect per horizontal
+colour run. The typed extension picks the writer, so `badge.svg` entered through the PNG entry
+still leaves an SVG behind.
 
 ### New in 1.4.5-beta.25
 
@@ -182,6 +201,10 @@ To remove the beta completely, delete the executable and the folder above.
 - GIF export writes a still image: GIF animation is not part of this build. GIF also stores only
   one transparent colour and at most 256 palette colours, so semi-transparent pixels become
   opaque or transparent and busy badges are quantized.
+- JPEG export flattens the badge onto white — the format cannot store transparency. SVG export is
+  pixel-accurate but built from one rect per colour run, not from redrawable paths.
+- The Move tool is alpha: it shifts the active layer's pixels inside the 40 × 40 canvas and clips
+  whatever leaves it.
 - The custom theme designer and its presets are beta; the palette derivation and preset format
   may still change.
 - The executable is not code-signed. Windows SmartScreen may ask you to confirm the first launch

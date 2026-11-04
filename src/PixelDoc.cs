@@ -315,6 +315,55 @@ namespace HabboBadgeCreator
             Touch();
         }
 
+        // ---------------------------------------------------- move tool (alpha)
+        int[] moveSrc;
+        bool moveActive, movePushed;
+
+        public bool IsMovingLayer { get { return moveActive; } }
+
+        /// <summary>
+        /// Picks up the active layer for an interactive drag. The pixels are kept aside so every
+        /// mouse move can be recomposed from the original instead of from the previous offset.
+        /// </summary>
+        public bool BeginLayerMove()
+        {
+            if (ActiveLocked) return false;
+            moveSrc = (int[])px.Clone();
+            moveActive = true;
+            movePushed = false;
+            return true;
+        }
+
+        /// <summary>Offsets the active layer during a drag; the undo snapshot is taken once.</summary>
+        public void MoveLayerLive(int dx, int dy)
+        {
+            if (!moveActive || moveSrc == null) return;
+            if (!movePushed) { PushUndo(); movePushed = true; }
+            Array.Clear(px, 0, Count);
+            for (int y = 0; y < N; y++)
+            {
+                int sy = y - dy;
+                if (sy < 0 || sy >= N) continue;
+                for (int x = 0; x < N; x++)
+                {
+                    int sx = x - dx;
+                    if (sx < 0 || sx >= N) continue;
+                    px[y * N + x] = moveSrc[sy * N + sx];
+                }
+            }
+            Touch();
+        }
+
+        /// <summary>Ends the drag; a click that never moved leaves no undo step behind.</summary>
+        public void EndLayerMove()
+        {
+            if (!moveActive) return;
+            moveActive = false;
+            movePushed = false;
+            moveSrc = null;
+            Touch();
+        }
+
         // ------------------------------------------------------------ layers
         public int LayerCount { get { return layers.Count; } }
 
@@ -1031,40 +1080,107 @@ namespace HabboBadgeCreator
             catch { }
         }
 
+        /// <summary>File types the Export button can write; the typed extension wins over the dialog entry.</summary>
+        public enum ExportKind { Png, Gif, Jpeg, Ico, Svg }
+
+        /// <summary>Maps a chosen file name (or the save-dialog entry when it has no extension) to a writer.</summary>
+        public static ExportKind KindFor(string path, int filterIndex)
+        {
+            switch (Path.GetExtension(path == null ? "" : path).ToLowerInvariant())
+            {
+                case ".png": return ExportKind.Png;
+                case ".gif": return ExportKind.Gif;
+                case ".jpg":
+                case ".jpeg": return ExportKind.Jpeg;
+                case ".ico": return ExportKind.Ico;
+                case ".svg": return ExportKind.Svg;
+            }
+            switch (filterIndex)
+            {
+                case 2: return ExportKind.Gif;
+                case 3: return ExportKind.Jpeg;
+                case 4: return ExportKind.Ico;
+                case 5: return ExportKind.Svg;
+                default: return ExportKind.Png;
+            }
+        }
+
         public static string ExportPng(Bitmap bmp, string path)
         {
             bmp.Save(path, ImageFormat.Png);
             return path;
         }
 
+        /// <summary>JPEG cannot store transparency, so the badge is flattened onto white.</summary>
+        public static string ExportJpeg(Bitmap bmp, string path)
+        {
+            using (Bitmap flat = new Bitmap(bmp.Width, bmp.Height, PixelFormat.Format24bppRgb))
+            {
+                using (Graphics g = Graphics.FromImage(flat))
+                {
+                    g.Clear(Color.White);
+                    g.CompositingMode = CompositingMode.SourceOver;
+                    g.DrawImageUnscaled(bmp, 0, 0);
+                }
+                flat.Save(path, ImageFormat.Jpeg);
+            }
+            return path;
+        }
+
+        /// <summary>Vector copy of the badge: one rect per horizontal colour run.</summary>
+        public static string ExportSvg(Bitmap bmp, string path)
+        {
+            int w, h;
+            int[] pixels = ReadPixels(bmp, out w, out h);
+            SvgWriter.Save(pixels, w, h, path);
+            return path;
+        }
+
+        /// <summary>Windows icon with 16, 32, 48 and 64 px entries, nearest-neighbour scaled.</summary>
+        public static string ExportIco(Bitmap bmp, string path)
+        {
+            IcoWriter.Save(bmp, path);
+            return path;
+        }
+
         /// <summary>Writes the badge as a 40 x 40 GIF; see <see cref="GifWriter"/> for the palette rules.</summary>
         public static string ExportGif(Bitmap bmp, string path)
         {
-            // copy into a known 32bpp surface so the incoming pixel format never has to be guessed
-            using (Bitmap copy = new Bitmap(bmp.Width, bmp.Height, PixelFormat.Format32bppArgb))
+            int w, h;
+            int[] pixels = ReadPixels(bmp, out w, out h);
+            GifWriter.Save(pixels, w, h, path);
+            return path;
+        }
+
+        /// <summary>Copies a bitmap into a known 32bpp surface so the incoming pixel format never has to be guessed.</summary>
+        static int[] ReadPixels(Bitmap bmp, out int width, out int height)
+        {
+            width = bmp.Width;
+            height = bmp.Height;
+            int[] pixels;
+            using (Bitmap copy = new Bitmap(width, height, PixelFormat.Format32bppArgb))
             {
                 using (Graphics g = Graphics.FromImage(copy))
                 {
                     g.CompositingMode = CompositingMode.SourceCopy;
                     g.DrawImageUnscaled(bmp, 0, 0);
                 }
-                int[] pixels = new int[copy.Width * copy.Height];
-                BitmapData d = copy.LockBits(new Rectangle(0, 0, copy.Width, copy.Height),
+                pixels = new int[width * height];
+                BitmapData d = copy.LockBits(new Rectangle(0, 0, width, height),
                     ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
                 try
                 {
-                    int[] row = new int[copy.Width];
-                    for (int y = 0; y < copy.Height; y++)
+                    int[] row = new int[width];
+                    for (int y = 0; y < height; y++)
                     {
                         System.Runtime.InteropServices.Marshal.Copy(
-                            new IntPtr(d.Scan0.ToInt64() + y * d.Stride), row, 0, copy.Width);
-                        Array.Copy(row, 0, pixels, y * copy.Width, copy.Width);
+                            new IntPtr(d.Scan0.ToInt64() + y * d.Stride), row, 0, width);
+                        Array.Copy(row, 0, pixels, y * width, width);
                     }
                 }
                 finally { copy.UnlockBits(d); }
-                GifWriter.Save(pixels, copy.Width, copy.Height, path);
             }
-            return path;
+            return pixels;
         }
 
         public static string SettingsFile { get { return Path.Combine(Root, "settings.json"); } }
