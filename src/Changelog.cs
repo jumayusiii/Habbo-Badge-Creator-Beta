@@ -9,13 +9,30 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.27";
-        public const string Build = "2026-11-04.27";
+        public const string Version = "1.4.5-beta.28";
+        public const string Build = "2026-11-04.28";
         public const string Date = "4 November 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.28", "4 Nov 2026",
+                "Copy, cut and duplicate the selection",
+                "Auswahl kopieren, ausschneiden, duplizieren",
+                new string[]
+                {
+                    "The alpha selection has a clipboard now: Ctrl+C puts the selected pixels in an in-app clipboard, Ctrl+X cuts them in one undoable step, Ctrl+V pastes them back two pixels right and down, and Ctrl+Shift+D duplicates the selection in place — the source stays, the copy is offset and already selected.",
+                    "Paste and duplicate keep the copy fully inside the 40 × 40 canvas and select it, so it can be dragged straight into place with the Rectangle select tool. Fully transparent pixels in the copy are skipped, so a paste never punches a hole in the artwork below.",
+                    "While a selection exists, the line under the canvas spells the keys out — drag to move, Del, Ctrl+C, Ctrl+Shift+D — so the alpha shortcuts are discoverable without reading the changelog.",
+                    "Ten new self-test checks cover copy, cut, paste, duplicate, their single undo steps, the transparent-pixel skip, the canvas clamp and the locked-layer refusal, for 147 checks in total."
+                },
+                new string[]
+                {
+                    "Die Alpha-Auswahl hat jetzt eine Zwischenablage: Strg+C legt die ausgewählten Pixel in eine interne Zwischenablage, Strg+X schneidet sie in einem Rückgängig-Schritt aus, Strg+V fügt sie zwei Pixel rechts und unten wieder ein, und Strg+Umschalt+D dupliziert die Auswahl an Ort und Stelle – die Quelle bleibt, die Kopie ist versetzt und bereits ausgewählt.",
+                    "Einfügen und Duplizieren halten die Kopie vollständig innerhalb der 40 × 40-Fläche und wählen sie aus, sodass sie mit der Rechteckauswahl sofort an die gewünschte Stelle gezogen werden kann. Vollständig transparente Pixel der Kopie werden übersprungen, sodass ein Einfügen nie ein Loch ins Motiv darunter stanzt.",
+                    "Solange eine Auswahl besteht, nennt die Zeile unter der Zeichenfläche die Tasten – ziehen = verschieben, Entf, Strg+C, Strg+Umschalt+D –, damit die Alpha-Kürzel ohne Changelog auffindbar sind.",
+                    "Zehn neue Selbsttest-Prüfungen decken Kopieren, Ausschneiden, Einfügen, Duplizieren, ihre einzelnen Rückgängig-Schritte, das Überspringen transparenter Pixel, die Begrenzung auf die Fläche und die Ablehnung auf gesperrter Ebene ab – insgesamt 147 Prüfungen."
+                }),
             new ReleaseNote("1.4.5-beta.27", "4 Nov 2026",
                 "Rectangle select, alpha tools marked red",
                 "Rechteckauswahl, Alpha-Werkzeuge rot markiert",

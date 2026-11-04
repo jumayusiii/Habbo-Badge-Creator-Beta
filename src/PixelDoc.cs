@@ -469,6 +469,83 @@ namespace HabboBadgeCreator
             Touch();
         }
 
+        // ---------------------------------------------- selection clipboard (alpha)
+        int[] selClip;              // copied pixels, row-major selClipW × selClipH
+        int selClipW, selClipH;
+
+        public bool HasSelectionClip { get { return selClip != null && selClipW > 0 && selClipH > 0; } }
+        public int SelectionClipWidth { get { return selClipW; } }
+        public int SelectionClipHeight { get { return selClipH; } }
+
+        /// <summary>Copies the selected pixels into the in-app clipboard; the canvas is untouched.</summary>
+        public bool CopySelection()
+        {
+            if (!HasSelection) return false;
+            selClipW = sel.Width;
+            selClipH = sel.Height;
+            selClip = new int[selClipW * selClipH];
+            for (int y = 0; y < selClipH; y++)
+                for (int x = 0; x < selClipW; x++)
+                    selClip[y * selClipW + x] = px[(sel.Y + y) * N + sel.X + x];
+            return true;
+        }
+
+        /// <summary>Copies the selection and erases it. One undo step.</summary>
+        public bool CutSelection()
+        {
+            if (ActiveLocked || !CopySelection()) return false;
+            PushUndo();
+            for (int y = sel.Top; y < sel.Bottom; y++)
+                for (int x = sel.Left; x < sel.Right; x++) px[y * N + x] = 0;
+            Touch();
+            return true;
+        }
+
+        /// <summary>
+        /// Stamps the clipboard back onto the active layer, offset so the copy sits next to its
+        /// source, and selects the pasted rectangle so it can be dragged straight away. Fully
+        /// transparent pixels are skipped, so a paste never punches a hole in the artwork.
+        /// One undo step.
+        /// </summary>
+        public bool PasteSelection(int dx, int dy)
+        {
+            if (!HasSelectionClip) return false;
+            return Stamp(selClip, selClipW, selClipH, dx, dy);
+        }
+
+        /// <summary>Copies the selected pixels and stamps that copy in one undoable step.</summary>
+        public bool DuplicateSelection(int dx, int dy)
+        {
+            if (!HasSelection) return false;
+            int w = sel.Width, h = sel.Height;
+            int[] src = new int[w * h];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    src[y * w + x] = px[(sel.Y + y) * N + sel.X + x];
+            return Stamp(src, w, h, dx, dy);
+        }
+
+        /// <summary>Writes a copied block next to the selection, clamped inside the canvas.</summary>
+        bool Stamp(int[] src, int w, int h, int dx, int dy)
+        {
+            if (ActiveLocked || src == null || w <= 0 || h <= 0) return false;
+            int ox = (HasSelection ? sel.X : 0) + dx;
+            int oy = (HasSelection ? sel.Y : 0) + dy;
+            ox = Math.Max(0, Math.Min(N - w, ox));
+            oy = Math.Max(0, Math.Min(N - h, oy));
+            PushUndo();
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int p = src[y * w + x];
+                    if ((p & unchecked((int)0xFF000000)) == 0) continue;   // keep the artwork below
+                    px[(oy + y) * N + ox + x] = p;
+                }
+            sel = new Rectangle(ox, oy, w, h);
+            Touch();
+            return true;
+        }
+
         // ------------------------------------------------------------ layers
         public int LayerCount { get { return layers.Count; } }
 

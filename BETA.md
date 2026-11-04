@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.27` |
+| Version | `1.4.5` | `1.4.5-beta.28` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -40,7 +40,9 @@ Both builds can run at the same time. They never read or write each other's gall
 - **Rectangle select (alpha)** — the **Rectangle select** tool (`S`) sweeps out a marquee. Drag
   inside it to carry those pixels elsewhere (the hole stays behind), `Delete` clears just the
   selected pixels, `Esc` or `Ctrl+D` deselects and `Ctrl+A` selects the whole canvas. While a
-  selection exists the pencil, eraser and fill stay inside it.
+  selection exists the pencil, eraser and fill stay inside it. `Ctrl+C` copies the marquee,
+  `Ctrl+X` cuts it, `Ctrl+V` pastes the copy beside it and `Ctrl+Shift+D` duplicates it in place,
+  each one undoable; the copy is selected and ready to drag.
 - **More export formats** — **Export** writes PNG, GIF, JPEG, ICO or SVG. JPEG is flattened onto
   white because the format has no transparency, ICO contains 16/32/48/64 px entries, and SVG is a
   40 × 40 vector built from one rect per horizontal colour run.
@@ -63,6 +65,17 @@ Both builds can run at the same time. They never read or write each other's gall
   Picking previews on the badge; **Cancel** puts the previous colour back.
 - **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
   a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.28
+
+The alpha selection has a clipboard now. `Ctrl+C` copies the marquee, `Ctrl+X` cuts it, `Ctrl+V`
+pastes the copy two pixels right and down, and `Ctrl+Shift+D` duplicates the selection in place.
+Each is a single undo step, the copy stays fully inside the 40 × 40 canvas, and its marquee is
+already selected, so it can be dragged straight into place with the Rectangle select tool.
+Transparent pixels in the copy are skipped, so pasting never punches a hole in the artwork below.
+
+While a selection exists, the line under the canvas lists the keys: drag to move, `Del`, `Ctrl+C`,
+`Ctrl+Shift+D`. The selection itself is still not saved with the badge.
 
 ### New in 1.4.5-beta.27
 

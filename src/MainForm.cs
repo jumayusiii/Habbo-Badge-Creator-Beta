@@ -706,8 +706,16 @@ namespace HabboBadgeCreator
             string co = canvas.HoverX >= 0
                 ? "X " + canvas.HoverX + "   Y " + canvas.HoverY
                 : "40 × 40 px";
+            int coW = T.P(120);
+            if (doc.HasSelection)
+            {
+                // the alpha selection is discoverable without the changelog
+                co = L.T("SEL · drag to move · Del · Ctrl+C · Ctrl+Shift+D",
+                    "AUSW. · ziehen = verschieben · Entf · Strg+C · Strg+Umschalt+D");
+                coW = T.P(360);
+            }
             T.Str(g, co, T.FMicro, canvas.HoverX >= 0 ? T.Muted : T.Dim,
-                new Rectangle(hx0 + capW + T.P(12), hy, T.P(120), T.P(16)), T.FL);
+                new Rectangle(hx0 + capW + T.P(12), hy, coW, T.P(16)), T.FL);
         }
 
         void DrawDetailsChrome(Graphics g)
@@ -779,6 +787,54 @@ namespace HabboBadgeCreator
             strokeTimer.Stop();
             canvas.Invalidate();
             previewBig.Invalidate();
+        }
+
+        /// <summary>
+        /// Copy, cut, paste and duplicate for the alpha selection. Each is one undo step and leaves
+        /// the marquee on the pasted pixels so they can be dragged into place.
+        /// </summary>
+        void SelectionAction(int slot)
+        {
+            if (slot != 0 && doc.ActiveLocked)
+            {
+                ShowToast(L.T("That layer is locked — unlock it in the layers panel",
+                    "Diese Ebene ist gesperrt – im Ebenen-Bereich entsperren"));
+                return;
+            }
+            bool ok;
+            switch (slot)
+            {
+                case 0:   // copy
+                    ok = doc.CopySelection();
+                    if (ok) ShowToast(L.T("Selection copied — Ctrl+Shift+D duplicates it",
+                        "Auswahl kopiert – Strg+Umschalt+D dupliziert sie"));
+                    break;
+                case 1:   // cut
+                    ok = doc.CutSelection();
+                    if (ok) ShowToast(L.T("Selection cut", "Auswahl ausgeschnitten"));
+                    break;
+                case 2:   // paste
+                    ok = doc.PasteSelection(2, 2);
+                    if (ok) ShowToast(L.T("Pasted — drag inside the selection to place it",
+                        "Eingefügt – im Auswahlbereich ziehen, um zu platzieren"));
+                    break;
+                default:  // duplicate
+                    ok = doc.DuplicateSelection(2, 2);
+                    if (ok) ShowToast(L.T("Selection duplicated — drag it into place",
+                        "Auswahl dupliziert – an die gewünschte Stelle ziehen"));
+                    break;
+            }
+            if (!ok) return;
+            RefreshDoc();
+            Invalidate();   // the selection hint in the canvas footer appears or changes
+        }
+
+        /// <summary>Shows a marquee and its hint for layout screenshots.</summary>
+        public void DebugSelection()
+        {
+            doc.SetSelection(new Rectangle(12, 12, 16, 16));
+            RefreshDoc();
+            Invalidate();
         }
 
         /// <summary>Layer actions from the keyboard; the panel has the same buttons.</summary>
@@ -1405,12 +1461,23 @@ namespace HabboBadgeCreator
                         RefreshDoc(); return true;
                     case Keys.Y: doc.Redo(); RefreshDoc(); return true;
                     case Keys.L: ToggleLayers(); return true;
-                    case Keys.C: if (shift) { CopyBadge(); return true; } break;
+                    case Keys.C:
+                        if (shift) { CopyBadge(); return true; }
+                        if (!typing && doc.HasSelection) { SelectionAction(0); return true; }
+                        break;
+                    case Keys.X:
+                        if (!typing && doc.HasSelection) { SelectionAction(1); return true; }
+                        break;
+                    case Keys.V:
+                        if (!typing && doc.HasSelectionClip) { SelectionAction(2); return true; }
+                        break;
                     case Keys.A:
-                        if (!typing) { doc.SelectAll(); RefreshDoc(); return true; }
+                        if (!typing) { doc.SelectAll(); RefreshDoc(); Invalidate(); return true; }
                         break;
                     case Keys.D:
-                        if (!typing && doc.HasSelection) { doc.ClearSelection(); RefreshDoc(); return true; }
+                        if (typing) break;
+                        if (shift) { if (doc.HasSelection) SelectionAction(3); return true; }
+                        if (doc.HasSelection) { doc.ClearSelection(); RefreshDoc(); Invalidate(); return true; }
                         break;
                     case Keys.Add:
                     case Keys.Oemplus: autoZoom = false; canvas.Zoom = canvas.Zoom + 1; UpdateToolUi(); return true;
@@ -1434,6 +1501,7 @@ namespace HabboBadgeCreator
             {
                 doc.ClearSelection();
                 RefreshDoc();
+                Invalidate();
                 return true;
             }
             if (k == Keys.Delete && doc.HasSelection)

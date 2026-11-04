@@ -127,7 +127,7 @@ namespace HabboBadgeCreator
             bool chipTip = string.Equals(Value(args, "--tip"), "chip", StringComparison.OrdinalIgnoreCase);
             if (shot != null)
             {
-                Screenshot(form, shot, Has(args, "--stroke"), Has(args, "--tip"), chipTip, Has(args, "--guides"), Has(args, "--layers"), Has(args, "--layer-tip"), Has(args, "--layers-demo"), Has(args, "--no-layers"));
+                Screenshot(form, shot, Has(args, "--stroke"), Has(args, "--tip"), chipTip, Has(args, "--guides"), Has(args, "--layers"), Has(args, "--layer-tip"), Has(args, "--layers-demo"), Has(args, "--no-layers"), Has(args, "--selection"));
                 return;
             }
             if (Has(args, "--tip"))
@@ -216,7 +216,7 @@ namespace HabboBadgeCreator
         }
 
         /// <summary>Renders the window to a PNG for visual checks.</summary>
-        static void Screenshot(MainForm form, string path, bool stroke, bool tip, bool chipTip, bool guides, bool layers, bool layerTip, bool layerDemo, bool noLayers)
+        static void Screenshot(MainForm form, string path, bool stroke, bool tip, bool chipTip, bool guides, bool layers, bool layerTip, bool layerDemo, bool noLayers, bool selection)
         {
             form.StartPosition = FormStartPosition.Manual;
             form.Location = new Point(40, 40);
@@ -229,6 +229,7 @@ namespace HabboBadgeCreator
             if (layers) form.DebugLayers();
             if (layerDemo) form.DebugLayerDemo();
             if (noLayers) form.DebugHideLayers();
+            if (selection) form.DebugSelection();
             if (layerTip) form.DebugLayerTip();
             if (tip) { if (chipTip) form.DebugSettingsTip(); else form.DebugTip(); }
             Application.DoEvents();
@@ -1271,6 +1272,46 @@ namespace HabboBadgeCreator
 
             d.SetLayerLocked(0, true);
             Check("a locked layer refuses a selection move", !d.BeginSelectionMove());
+            d.SetLayerLocked(0, false);
+
+            // copy / cut / paste / duplicate
+            Check("paste is refused before anything was copied", !new PixelDoc().PasteSelection(2, 2));
+            d.SetSelection(new Rectangle(10, 10, 2, 2));
+            Check("copying a selection keeps the pixels untouched",
+                d.CopySelection() && d[10, 10] == unchecked((int)0xFF00FFFF));
+            Check("pasting a copy offsets it and selects the copy",
+                d.PasteSelection(2, 2) && d[12, 12] == unchecked((int)0xFF00FFFF) &&
+                d[10, 10] == unchecked((int)0xFF00FFFF) && d.Selection == new Rectangle(12, 12, 2, 2));
+            d.Undo();
+            Check("pasting is one undo step",
+                d[12, 12] == 0 && d[10, 10] == unchecked((int)0xFF00FFFF));
+
+            d.SetSelection(new Rectangle(10, 10, 2, 2));
+            Check("cutting copies the pixels and erases them",
+                d.CutSelection() && d[10, 10] == 0 && d.HasSelectionClip);
+            d.Undo();
+            Check("cutting is one undo step", d[10, 10] == unchecked((int)0xFF00FFFF));
+
+            d.SetSelection(new Rectangle(10, 10, 2, 2));
+            Check("duplicating keeps the source and offsets the copy",
+                d.DuplicateSelection(4, 4) && d[14, 14] == unchecked((int)0xFF00FFFF) &&
+                d[10, 10] == unchecked((int)0xFF00FFFF) && d.Selection == new Rectangle(14, 14, 2, 2));
+            d.Undo();
+            Check("duplicating is one undo step",
+                d[14, 14] == 0 && d[10, 10] == unchecked((int)0xFF00FFFF));
+
+            d.ClearSelection();
+            d.Set(20, 20, unchecked((int)0xFFFF00FF));
+            d.Set(21, 20, 0);
+            d.Set(23, 20, unchecked((int)0xFF00FF00));
+            d.SetSelection(new Rectangle(20, 20, 2, 1));
+            d.CopySelection();
+            d.PasteSelection(2, 0);
+            Check("a pasted copy does not punch holes with its transparent pixels",
+                d[22, 20] == unchecked((int)0xFFFF00FF) && d[23, 20] == unchecked((int)0xFF00FF00));
+            d.Undo();
+            d.SetLayerLocked(0, true);
+            Check("a locked layer refuses a paste", !d.PasteSelection(2, 2));
             d.SetLayerLocked(0, false);
 
             try
