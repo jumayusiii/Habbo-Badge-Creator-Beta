@@ -733,6 +733,15 @@ namespace HabboBadgeCreator
                         g.FillEllipse(b, 14.2f, 3.8f, 6f, 6f);
                         g.FillPolygon(b, new PointF[] { new PointF(3.8f, 20.2f), new PointF(5.1f, 16.2f), new PointF(7.8f, 18.9f) });
                         break;
+                    case "move":
+                        // four-way arrow: the alpha tool that drags the active layer
+                        g.DrawLine(p, 12f, 4.6f, 12f, 19.4f);
+                        g.DrawLine(p, 4.6f, 12f, 19.4f, 12f);
+                        g.FillPolygon(b, new PointF[] { new PointF(12f, 2.2f), new PointF(9.1f, 6.2f), new PointF(14.9f, 6.2f) });
+                        g.FillPolygon(b, new PointF[] { new PointF(12f, 21.8f), new PointF(9.1f, 17.8f), new PointF(14.9f, 17.8f) });
+                        g.FillPolygon(b, new PointF[] { new PointF(2.2f, 12f), new PointF(6.2f, 9.1f), new PointF(6.2f, 14.9f) });
+                        g.FillPolygon(b, new PointF[] { new PointF(21.8f, 12f), new PointF(17.8f, 9.1f), new PointF(17.8f, 14.9f) });
+                        break;
                     case "mirror":
                         using (Pen q = new Pen(c, 1.4f))
                         {
