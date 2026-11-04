@@ -20,7 +20,7 @@ are usable, but their behaviour and saved format may still change.
 | Data folder | `%APPDATA%\HabboBadgeCreator` | `%APPDATA%\HabboBadgeCreatorBeta` |
 | App bar | HABBO wordmark | HABBO wordmark + gold **BETA** pill |
 | Splash | `BADGE CREATOR` | `BADGE CREATOR · BETA` |
-| Version | `1.4.5` | `1.4.5-beta.26` |
+| Version | `1.4.5` | `1.4.5-beta.27` |
 
 Both builds can run at the same time. They never read or write each other's gallery, draft or
 `settings.json`.
@@ -35,7 +35,12 @@ Both builds can run at the same time. They never read or write each other's gall
   copy the finished 40 × 40 badge to the clipboard with `Ctrl+Shift+C` or the button beside
   **Export**.
 - **Move layer (alpha)** — the **Move** tool (`V`) drags the active layer's pixels with the mouse
-  in one undoable step, so a shape can be corrected without redrawing it.
+  in one undoable step, so a shape can be corrected without redrawing it. Alpha tools carry a
+  constant red dot on their toolbar button and a red **ALPHA** chip in their tooltip.
+- **Rectangle select (alpha)** — the **Rectangle select** tool (`S`) sweeps out a marquee. Drag
+  inside it to carry those pixels elsewhere (the hole stays behind), `Delete` clears just the
+  selected pixels, `Esc` or `Ctrl+D` deselects and `Ctrl+A` selects the whole canvas. While a
+  selection exists the pencil, eraser and fill stay inside it.
 - **More export formats** — **Export** writes PNG, GIF, JPEG, ICO or SVG. JPEG is flattened onto
   white because the format has no transparency, ICO contains 16/32/48/64 px entries, and SVG is a
   40 × 40 vector built from one rect per horizontal colour run.
@@ -58,6 +63,21 @@ Both builds can run at the same time. They never read or write each other's gall
   Picking previews on the badge; **Cancel** puts the previous colour back.
 - **Themed confirmations** - deleting a badge opens the app's own sheet with the badge preview and
   a danger **Delete** button, and import/export errors use the same sheet, in every palette.
+
+### New in 1.4.5-beta.27
+
+The two alpha tools are marked in red — a constant red dot on the toolbar button and a red
+**ALPHA** chip in the tooltip — so they are recognisable before they are picked, in every theme.
+
+**Rectangle select** (`S`) works like Paint.NET's marquee: drag out a rectangle, then drag inside
+it to move those pixels, leaving the transparent hole behind. `Delete` clears only the selected
+pixels, `Esc` or a click without a drag deselects, `Ctrl+A` selects the whole 40 × 40 canvas and
+`Ctrl+D` drops the selection. While a selection exists, the pencil, eraser and fill stay inside
+it. Moving or deleting the selection is a single undo step, and the marquee is clamped to the
+canvas.
+
+Known limit of the alpha: the selection lives on the active layer only and is not saved with the
+badge — saving, exporting and the autosaved draft store the flattened artwork as before.
 
 ### New in 1.4.5-beta.26
 
@@ -203,8 +223,8 @@ To remove the beta completely, delete the executable and the folder above.
   opaque or transparent and busy badges are quantized.
 - JPEG export flattens the badge onto white — the format cannot store transparency. SVG export is
   pixel-accurate but built from one rect per colour run, not from redrawable paths.
-- The Move tool is alpha: it shifts the active layer's pixels inside the 40 × 40 canvas and clips
-  whatever leaves it.
+- The Move tool and Rectangle select are alpha: they work on the active layer's pixels inside the
+  40 × 40 canvas, clip whatever leaves it, and the selection itself is not saved with the badge.
 - The custom theme designer and its presets are beta; the palette derivation and preset format
   may still change.
 - The executable is not code-signed. Windows SmartScreen may ask you to confirm the first launch

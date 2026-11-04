@@ -104,6 +104,7 @@ namespace HabboBadgeCreator
         void RawSet(int x, int y, int argb)
         {
             if (x < 0 || y < 0 || x >= N || y >= N) return;
+            if (!InSelection(x, y)) return;   // painting stays inside the alpha selection
             px[y * N + x] = argb;
         }
 
@@ -253,6 +254,7 @@ namespace HabboBadgeCreator
                 int idx = stack.Pop();
                 if (px[idx] != target) continue;
                 int cx = idx % N, cy = idx / N;
+                if (!InSelection(cx, cy)) continue;
                 px[idx] = argb;
                 if (cx > 0) stack.Push(idx - 1);
                 if (cx < N - 1) stack.Push(idx + 1);
@@ -361,6 +363,109 @@ namespace HabboBadgeCreator
             moveActive = false;
             movePushed = false;
             moveSrc = null;
+            Touch();
+        }
+
+        // ---------------------------------------------------- rectangle select (alpha)
+        Rectangle sel;              // pixel selection; empty rectangle when nothing is selected
+        int[] selSrc;
+        bool selMoving, selPushed;
+        Rectangle selStart;
+        int selDX, selDY;
+
+        public bool HasSelection { get { return sel.Width > 0 && sel.Height > 0; } }
+        public Rectangle Selection { get { return sel; } }
+        public bool IsMovingSelection { get { return selMoving; } }
+
+        /// <summary>Clamps a selection to the canvas; a rectangle that misses it clears the selection.</summary>
+        public void SetSelection(Rectangle r)
+        {
+            int x0 = Math.Max(0, Math.Min(N, r.Left));
+            int y0 = Math.Max(0, Math.Min(N, r.Top));
+            int x1 = Math.Max(0, Math.Min(N, r.Right));
+            int y1 = Math.Max(0, Math.Min(N, r.Bottom));
+            sel = (x1 > x0 && y1 > y0) ? Rectangle.FromLTRB(x0, y0, x1, y1) : Rectangle.Empty;
+            Touch();
+        }
+
+        public void SelectAll()
+        {
+            SetSelection(new Rectangle(0, 0, N, N));
+        }
+
+        public void ClearSelection()
+        {
+            if (!HasSelection) return;
+            sel = Rectangle.Empty;
+            Touch();
+        }
+
+        bool InSelection(int x, int y)
+        {
+            return !HasSelection ||
+                (x >= sel.X && y >= sel.Y && x < sel.Right && y < sel.Bottom);
+        }
+
+        /// <summary>Erases only the selected pixels of the active layer. Undoable.</summary>
+        public void DeleteSelection()
+        {
+            if (ActiveLocked || !HasSelection) return;
+            PushUndo();
+            for (int y = sel.Top; y < sel.Bottom; y++)
+                for (int x = sel.Left; x < sel.Right; x++) px[y * N + x] = 0;
+            Touch();
+        }
+
+        /// <summary>Picks up the selected pixels for a drag, keeping the source aside.</summary>
+        public bool BeginSelectionMove()
+        {
+            if (ActiveLocked || !HasSelection) return false;
+            selSrc = (int[])px.Clone();
+            selStart = sel;
+            selMoving = true;
+            selPushed = false;
+            selDX = 0;
+            selDY = 0;
+            return true;
+        }
+
+        /// <summary>
+        /// Carries the selected pixels by a whole-pixel offset: the selection is lifted out of
+        /// the layer first, so a hole stays behind exactly as in Paint.NET.
+        /// </summary>
+        public void MoveSelectionLive(int dx, int dy)
+        {
+            if (!selMoving || selSrc == null) return;
+            if (dx == selDX && dy == selDY) return;
+            if (!selPushed) { PushUndo(); selPushed = true; }
+            Array.Copy(selSrc, px, Count);
+            for (int y = selStart.Top; y < selStart.Bottom; y++)
+                for (int x = selStart.Left; x < selStart.Right; x++) px[y * N + x] = 0;
+            for (int y = selStart.Top; y < selStart.Bottom; y++)
+            {
+                int ty = y + dy;
+                if (ty < 0 || ty >= N) continue;
+                for (int x = selStart.Left; x < selStart.Right; x++)
+                {
+                    int tx = x + dx;
+                    if (tx < 0 || tx >= N) continue;
+                    px[ty * N + tx] = selSrc[y * N + x];
+                }
+            }
+            // the marquee travels with the pixels it carries
+            sel = new Rectangle(selStart.X + dx, selStart.Y + dy, selStart.Width, selStart.Height);
+            selDX = dx;
+            selDY = dy;
+            Touch();
+        }
+
+        /// <summary>Ends a selection drag; a click that never moved leaves no undo step behind.</summary>
+        public void EndSelectionMove()
+        {
+            if (!selMoving) return;
+            selMoving = false;
+            selPushed = false;
+            selSrc = null;
             Touch();
         }
 
@@ -661,6 +766,7 @@ namespace HabboBadgeCreator
 
         public void CopyFromBitmap(Bitmap bmp)
         {
+            sel = Rectangle.Empty;   // a loaded badge must not inherit a stale marquee
             using (Bitmap scaled = ScaleToCanvas(bmp))
             {
                 BitmapData d = scaled.LockBits(new Rectangle(0, 0, N, N), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);

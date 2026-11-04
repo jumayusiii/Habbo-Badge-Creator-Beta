@@ -9,13 +9,32 @@ namespace HabboBadgeCreator
     /// <summary>Version, credit and the release history shown in the changelog.</summary>
     internal static class AppInfo
     {
-        public const string Version = "1.4.5-beta.26";
-        public const string Build = "2026-11-04.26";
+        public const string Version = "1.4.5-beta.27";
+        public const string Build = "2026-11-04.27";
         public const string Date = "4 November 2026";
         public const string Credit = "Habbo Badge Creator © 2026 Jumayusi — Not affiliated with Habbo or Sulake";
 
         public static readonly ReleaseNote[] Releases = new ReleaseNote[]
         {
+            new ReleaseNote("1.4.5-beta.27", "4 Nov 2026",
+                "Rectangle select, alpha tools marked red",
+                "Rechteckauswahl, Alpha-Werkzeuge rot markiert",
+                new string[]
+                {
+                    "The alpha tools are marked now: a constant red dot sits in the corner of their toolbar button and their tooltip leads with a red ALPHA chip. The red is fixed rather than taken from the palette, so Move and Rectangle select read the same in Dark, Light, Navy and Custom.",
+                    "New alpha tool: Rectangle select (S). Drag on the canvas to sweep out a selection; drag inside it and those pixels follow the mouse, leaving the transparent hole behind exactly as Paint.NET does. Delete clears just the selected pixels, Esc or a click without a drag drops the selection, Ctrl+A selects the whole canvas and Ctrl+D deselects.",
+                    "The marquee is a dashed outline drawn over the artwork and it travels with the pixels it carries. While a selection exists the pencil, eraser and fill stay inside it, so the area outside cannot be painted by accident.",
+                    "Moving or deleting the selected pixels is a single undo step, a locked layer refuses to move them with the same hint the Move tool gives, and the selection is clamped to the 40 × 40 canvas.",
+                    "Thirteen new self-test checks cover the clamp, the paint clip, delete and move with the hole they leave, the single undo step, the locked-layer refusal and renders that prove the marquee and the red ALPHA chip are actually drawn."
+                },
+                new string[]
+                {
+                    "Die Alpha-Werkzeuge sind jetzt markiert: ein festes rotes Punkt-Symbol sitzt in der Ecke ihrer Werkzeugschaltfläche, und ihr Tooltip beginnt mit einem roten ALPHA-Feld. Das Rot stammt nicht aus der Palette, Move und Rechteckauswahl sehen in Dunkel, Hell, Marineblau und Eigenes also gleich aus.",
+                    "Neues Alpha-Werkzeug: Rechteckauswahl (S). Auf der Zeichenfläche ziehen, um einen Bereich auszuwählen; im Inneren ziehen, und diese Pixel folgen der Maus – das entstandene Loch bleibt zurück, genau wie in Paint.NET. Entf löscht nur die ausgewählten Pixel, Esc oder ein Klick ohne Ziehen hebt die Auswahl auf, Strg+A wählt die ganze Fläche und Strg+D hebt die Auswahl auf.",
+                    "Die Auswahl erscheint als gestrichelte Linie über dem Motiv und wandert mit den Pixeln mit. Solange eine Auswahl besteht, bleiben Stift, Radierer und Füllen in ihr – der Bereich außerhalb lässt sich nicht versehentlich bemalen.",
+                    "Verschieben und Löschen der ausgewählten Pixel ist je ein einziger Rückgängig-Schritt; eine gesperrte Ebene verweigert das Verschieben mit demselben Hinweis wie das Move-Werkzeug, und die Auswahl wird auf die 40 × 40-Fläche begrenzt.",
+                    "Dreizehn neue Selbsttest-Prüfungen decken die Begrenzung, den Mal-Clip, Löschen und Verschieben samt Loch, den einzelnen Rückgängig-Schritt, die Ablehnung auf gesperrter Ebene sowie Renderings ab, die Auswahl und rotes ALPHA-Feld nachweisen."
+                }),
             new ReleaseNote("1.4.5-beta.26", "4 Nov 2026",
                 "Move a layer, five export formats",
                 "Ebene verschieben, fünf Export-Formate",

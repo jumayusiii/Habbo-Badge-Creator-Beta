@@ -11,6 +11,6 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // numeric file version for Explorer, human-readable beta version in details
-[assembly: AssemblyVersion("1.4.5.26")]
-[assembly: AssemblyFileVersion("1.4.5.26")]
-[assembly: AssemblyInformationalVersion("1.4.5-beta.26")]
+[assembly: AssemblyVersion("1.4.5.27")]
+[assembly: AssemblyFileVersion("1.4.5.27")]
+[assembly: AssemblyInformationalVersion("1.4.5-beta.27")]

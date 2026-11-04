@@ -160,6 +160,7 @@ namespace HabboBadgeCreator
         public bool Active = false;
         public bool Toggle = false;
         public bool Segmented = false;
+        public bool Alpha = false;   // draws the constant red alpha marker in the corner
         public float IconScale = 0.56f;
         public string TipTitle = "";
         public string TipKey = "";
@@ -191,6 +192,14 @@ namespace HabboBadgeCreator
             else fg = T.ButtonFace(g, r, rad, false, hot, down);
             float s = Math.Min(Width, Height) * IconScale;
             T.Icon(g, Icon, new RectangleF((Width - s) / 2f, (Height - s) / 2f, s, s), fg);
+            if (Alpha)
+            {
+                // constant red: an alpha tool stays marked in every palette
+                float d = Math.Max(4f, T.P(5));
+                float ax = Width - d - T.P(1f), ay = T.P(1f);
+                using (SolidBrush ring = new SolidBrush(BackColor)) g.FillEllipse(ring, ax - 1f, ay - 1f, d + 2f, d + 2f);
+                using (SolidBrush dot = new SolidBrush(T.AlphaRed)) g.FillEllipse(dot, ax, ay, d, d);
+            }
         }
 
         protected override void OnMouseEnter(EventArgs e) { hot = true; Invalidate(); base.OnMouseEnter(e); }
@@ -204,6 +213,7 @@ namespace HabboBadgeCreator
     {
         public string Title = "";
         public string Key = "";
+        public bool Alpha = false;   // draws the red ALPHA chip before the title
 
         public TipView()
         {
@@ -219,26 +229,38 @@ namespace HabboBadgeCreator
             if (!(anchor is IconBtn)) return;
             IconBtn b = (IconBtn)anchor;
             if (b.TipTitle.Length == 0) { Visible = false; return; }
-            ShowFor(anchor, b.TipTitle, b.TipKey);
+            ShowFor(anchor, b.TipTitle, b.TipKey, b.Alpha);
         }
 
         /// <summary>Shows the tooltip under any control with an explicit label and detail.</summary>
         public void ShowFor(Control anchor, string title, string key)
         {
-            ShowAt(new Rectangle(anchor.Left, anchor.Top, anchor.Width, anchor.Height), title, key);
+            ShowFor(anchor, title, key, false);
+        }
+
+        public void ShowFor(Control anchor, string title, string key, bool alpha)
+        {
+            ShowAt(new Rectangle(anchor.Left, anchor.Top, anchor.Width, anchor.Height), title, key, alpha);
         }
 
         /// <summary>Shows the tooltip under a rect given in the parent's coordinates.</summary>
         public void ShowAt(Rectangle anchor, string title, string key)
         {
+            ShowAt(anchor, title, key, false);
+        }
+
+        public void ShowAt(Rectangle anchor, string title, string key, bool alpha)
+        {
             Title = title ?? "";
             Key = key ?? "";
+            Alpha = alpha;
             if (Title.Length == 0 || Parent == null) { Visible = false; return; }
 
             int pad = T.P(9), gap = T.P(7), dot = T.P(3), h = T.P(26);
             int tw = T.Meas(Title, T.FSmall).Width;
             int kw = Key.Length > 0 ? T.Meas(Key, T.FSmall).Width : 0;
-            int w = pad * 2 + tw + (kw > 0 ? gap * 2 + dot + gap + kw : 0);
+            int aw = Alpha ? T.Meas("ALPHA", T.FSmall).Width + T.P(8) + gap : 0;
+            int w = pad * 2 + tw + aw + (kw > 0 ? gap * 2 + dot + gap + kw : 0);
             int x = anchor.Left + (anchor.Width - w) / 2;
             x = Math.Max(T.P(16), Math.Min(Parent.ClientSize.Width - T.P(16) - w, x));
             int y = anchor.Bottom + T.P(6);
@@ -265,6 +287,15 @@ namespace HabboBadgeCreator
 
             int pad = T.P(9), gap = T.P(7), dot = T.P(3);
             int x = pad;
+            if (Alpha)
+            {
+                string tag = "ALPHA";
+                int tagW = T.Meas(tag, T.FSmall).Width + T.P(8);
+                int pillH = T.P(15);
+                T.FillRound(g, new RectangleF(x, (Height - pillH) / 2f, tagW, pillH), T.F(3f), T.AlphaRed);
+                T.Str(g, tag, T.FSmall, Color.White, new Rectangle(x, 0, tagW, Height), T.FC);
+                x += tagW + gap;
+            }
             T.Str(g, Title, T.FSmall, T.Text, new Rectangle(x, 0, Width - x - pad, Height), T.FL);
             x += T.Meas(Title, T.FSmall).Width + gap;
             if (Key.Length > 0)
@@ -1321,7 +1352,7 @@ namespace HabboBadgeCreator
     {
         public PixelDoc Doc;
         public Color DrawColor = Color.Black;
-        int tool; // 0 pencil, 1 eraser, 2 fill, 3 picker, 4 move (alpha)
+        int tool; // 0 pencil, 1 eraser, 2 fill, 3 picker, 4 move (alpha), 5 rectangle select (alpha)
 
         /// <summary>Active canvas tool; the move tool drags the active layer and gets its own cursor.</summary>
         public int Tool
@@ -1363,6 +1394,11 @@ namespace HabboBadgeCreator
         bool moving;          // alpha: the active layer is being dragged
         Point moveStart;
         int moveDX, moveDY;
+        bool selecting;       // alpha: a selection rectangle is being swept out
+        Point selFrom;
+        bool selMoving;       // alpha: the selected pixels are being carried
+        Point selMoveFrom;
+        int selMoveDX, selMoveDY;
         int hx = -1, hy = -1;
         Region strokeDirty;   // cells repainted since the stroke began
         readonly List<Rectangle> scratch = new List<Rectangle>();
@@ -1504,7 +1540,7 @@ namespace HabboBadgeCreator
 
         void DrawHover(Graphics g)
         {
-            if (hx < 0 || drawing || moving || Doc == null) return;
+            if (hx < 0 || drawing || moving || selecting || selMoving || Doc == null) return;
             Rectangle r = CanvasRect();
             using (Pen p = new Pen(T.HoverOutline, 1.5f))
                 g.DrawRectangle(p, r.X + hx * zoom, r.Y + hy * zoom, zoom - 1, zoom - 1);
@@ -1787,6 +1823,7 @@ namespace HabboBadgeCreator
                 // bounding box of a diagonal flick
                 if (drawing && strokeDirty != null) g.SetClip(strokeDirty, CombineMode.Intersect);
                 BlitSurface(g, clip);
+                DrawSelection(g);
                 DrawHover(g);
                 g.Restore(st);
                 return;
@@ -1809,6 +1846,7 @@ namespace HabboBadgeCreator
             using (Pen p = new Pen(T.FrameLine, 1f))
                 g.DrawRectangle(p, r.X - 1, r.Y - 1, r.Width + 1, r.Height + 1);
 
+            DrawSelection(g);
             DrawHover(g);
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -1852,6 +1890,32 @@ namespace HabboBadgeCreator
             {
                 int px = Doc.CompositeAt(c.X, c.Y);
                 if (Picked != null) Picked(Color.FromArgb(px));
+                return;
+            }
+            if (Tool == 5)
+            {
+                if (erase) return;
+                if (Doc.HasSelection && Doc.Selection.Contains(c))
+                {
+                    if (Doc.ActiveLocked)
+                    {
+                        if (LockedAttempt != null) LockedAttempt();
+                        return;
+                    }
+                    if (Doc.BeginSelectionMove())
+                    {
+                        selMoving = true;
+                        selMoveFrom = c;
+                        selMoveDX = 0;
+                        selMoveDY = 0;
+                        Invalidate();
+                    }
+                    return;
+                }
+                selecting = true;
+                selFrom = c;
+                Doc.SetSelection(new Rectangle(c.X, c.Y, 1, 1));
+                Invalidate();
                 return;
             }
             if (Doc.ActiveLocked)
@@ -1912,6 +1976,30 @@ namespace HabboBadgeCreator
             base.OnMouseMove(e);
             Point c;
             bool inCell = Cell(e.Location, out c);
+            if (selMoving && Doc != null && inCell)
+            {
+                int sdx = c.X - selMoveFrom.X, sdy = c.Y - selMoveFrom.Y;
+                if (sdx != selMoveDX || sdy != selMoveDY)
+                {
+                    Doc.MoveSelectionLive(sdx, sdy);
+                    selMoveDX = sdx;
+                    selMoveDY = sdy;
+                    Invalidate();
+                }
+                return;
+            }
+            if (selecting && Doc != null && inCell)
+            {
+                int x0 = Math.Min(selFrom.X, c.X), y0 = Math.Min(selFrom.Y, c.Y);
+                int x1 = Math.Max(selFrom.X, c.X) + 1, y1 = Math.Max(selFrom.Y, c.Y) + 1;
+                Rectangle want = Rectangle.FromLTRB(x0, y0, x1, y1);
+                if (!want.Equals(Doc.Selection))
+                {
+                    Doc.SetSelection(want);   // clamps at the canvas edge
+                    Invalidate();
+                }
+                return;
+            }
             if (moving && Doc != null && inCell)
             {
                 int dx = c.X - moveStart.X, dy = c.Y - moveStart.Y;
@@ -1995,6 +2083,7 @@ namespace HabboBadgeCreator
             Capture = false;
             EndMove();
             EndDraw();
+            EndSelection();
         }
 
         protected override void OnMouseLeave(EventArgs e)
@@ -2014,6 +2103,48 @@ namespace HabboBadgeCreator
             base.OnLostFocus(e);
             EndMove();
             EndDraw();
+            EndSelection();
+        }
+
+        /// <summary>
+        /// Finishes a selection drag. A click that never moved clears the marquee, like
+        /// Paint.NET, so a stray click does not leave a one-pixel selection clipping the brush.
+        /// </summary>
+        void EndSelection()
+        {
+            if (selMoving)
+            {
+                selMoving = false;
+                if (Doc != null) Doc.EndSelectionMove();
+                Invalidate();
+            }
+            if (selecting)
+            {
+                selecting = false;
+                if (Doc != null && Doc.HasSelection &&
+                    Doc.Selection.Width <= 1 && Doc.Selection.Height <= 1)
+                    Doc.ClearSelection();
+                Invalidate();
+            }
+        }
+
+        /// <summary>Marching-ants outline around the alpha selection, over the artwork.</summary>
+        void DrawSelection(Graphics g)
+        {
+            if (Doc == null || !Doc.HasSelection) return;
+            Rectangle r = CanvasRect(), s = Doc.Selection;
+            RectangleF box = new RectangleF(
+                r.X + s.X * zoom + 0.5f, r.Y + s.Y * zoom + 0.5f,
+                s.Width * zoom - 1f, s.Height * zoom - 1f);
+            g.SmoothingMode = SmoothingMode.None;
+            using (Pen light = new Pen(Color.FromArgb(230, 255, 255, 255), 1f))
+                g.DrawRectangle(light, box.X, box.Y, box.Width, box.Height);
+            using (Pen dark = new Pen(Color.FromArgb(230, 0, 0, 0), 1f))
+            {
+                dark.DashStyle = DashStyle.Dash;
+                dark.DashPattern = new float[] { 4f, 4f };
+                g.DrawRectangle(dark, box.X, box.Y, box.Width, box.Height);
+            }
         }
 
         /// <summary>Finishes an alpha move drag; the whole drag stays one undo step.</summary>

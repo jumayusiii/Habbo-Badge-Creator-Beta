@@ -23,7 +23,7 @@ namespace HabboBadgeCreator
         GalleryView gallery;
         PreviewView previewBig;
         FlatBtn btnSave, btnExport, btnClear, btnImport, btnOpenFolder;
-        IconBtn tPencil, tEraser, tFill, tPicker, tMove, tMirror, tFlipH, tFlipV, tRotate, tGrid, tCentre, tLayers, tUndo, tRedo, tZoomIn, tZoomOut;
+        IconBtn tPencil, tEraser, tFill, tPicker, tMove, tSelect, tMirror, tFlipH, tFlipV, tRotate, tGrid, tCentre, tLayers, tUndo, tRedo, tZoomIn, tZoomOut;
         IconBtn btnCopyBadge;
         LayersPanel layersPanel;
         BetaTag betaTag;
@@ -184,6 +184,9 @@ namespace HabboBadgeCreator
             tFill = MakeTool("bucket", "Fill");
             tPicker = MakeTool("picker", "Colour picker");
             tMove = MakeTool("move", "Move layer");
+            tMove.Alpha = true;   // constant red marker: this tool is alpha
+            tSelect = MakeTool("select", "Rectangle select");
+            tSelect.Alpha = true;
             tMirror = MakeToggle("mirror", "Mirror");
             tFlipH = MakeTool("flipH", "Flip horizontally");
             tFlipV = MakeTool("flipV", "Flip vertically");
@@ -203,6 +206,7 @@ namespace HabboBadgeCreator
             tFill.Click += delegate { SetTool(2); };
             tPicker.Click += delegate { SetTool(3); };
             tMove.Click += delegate { SetTool(4); };
+            tSelect.Click += delegate { SetTool(5); };
             tMirror.Click += delegate { ToggleMirror(); };
             tFlipH.Click += delegate { FlipCanvas(true); };
             tFlipV.Click += delegate { FlipCanvas(false); };
@@ -267,7 +271,7 @@ namespace HabboBadgeCreator
             wbMax.Click += delegate { ToggleMaximize(); };
             Controls.Add(wbMax);
 
-            IconBtn[] segmented = new IconBtn[] { tPencil, tEraser, tFill, tPicker, tMove, tMirror, tFlipH, tFlipV, tRotate, tUndo, tRedo, tZoomIn, tZoomOut, tGrid, tCentre, tLayers };
+            IconBtn[] segmented = new IconBtn[] { tPencil, tEraser, tFill, tPicker, tMove, tSelect, tMirror, tFlipH, tFlipV, tRotate, tUndo, tRedo, tZoomIn, tZoomOut, tGrid, tCentre, tLayers };
             foreach (IconBtn sb in segmented)
             {
                 sb.Segmented = true;
@@ -463,18 +467,19 @@ namespace HabboBadgeCreator
             btnImport.SetBounds(btnClear.Left - T.P(8) - iw2, btnClear.Top, iw2, btnH);
 
             int bodyY = rCardL.Y + headH + T.P(10);
-            // the move tool makes five buttons in the first group; 26 px keeps every group on
-            // one row at the minimum window width instead of letting the grid group collide
+            // the move and select tools make six buttons in the first group; 26 px keeps every
+            // group on one row at the minimum window width instead of letting the grid collide
             int gh = T.P(36), b = T.P(26), inset = T.P(4), bgap = T.P(2), ggap = T.P(6);
             int btnY = bodyY + (gh - b) / 2;
             int x = cx;
-            rGroupTools = new Rectangle(x, bodyY, inset * 2 + b * 5 + bgap * 4, gh);
+            rGroupTools = new Rectangle(x, bodyY, inset * 2 + b * 6 + bgap * 5, gh);
             int bx = x + inset;
             tPencil.SetBounds(bx, btnY, b, b); bx += b + bgap;
             tEraser.SetBounds(bx, btnY, b, b); bx += b + bgap;
             tFill.SetBounds(bx, btnY, b, b); bx += b + bgap;
             tPicker.SetBounds(bx, btnY, b, b); bx += b + bgap;
-            tMove.SetBounds(bx, btnY, b, b);
+            tMove.SetBounds(bx, btnY, b, b); bx += b + bgap;
+            tSelect.SetBounds(bx, btnY, b, b);
             x = rGroupTools.Right + ggap;
 
             rGroupMirror = new Rectangle(x, bodyY, inset * 2 + b * 4 + bgap * 3, gh);
@@ -606,8 +611,9 @@ namespace HabboBadgeCreator
             tFill.Active = (tool == 2);
             tPicker.Active = (tool == 3);
             tMove.Active = (tool == 4);
+            tSelect.Active = (tool == 5);
             tPencil.Invalidate(); tEraser.Invalidate(); tFill.Invalidate();
-            tPicker.Invalidate(); tMove.Invalidate();
+            tPicker.Invalidate(); tMove.Invalidate(); tSelect.Invalidate();
             tUndo.Invalidate();
             tRedo.Invalidate();
             canvas.Invalidate();
@@ -968,7 +974,8 @@ namespace HabboBadgeCreator
             SetTip(tEraser, L.T("Eraser", "Radierer"), "E");
             SetTip(tFill, L.T("Fill", "Füllen"), "G");
             SetTip(tPicker, L.T("Colour picker", "Pipette"), "I");
-            SetTip(tMove, L.T("Move layer (alpha)", "Ebene verschieben (Alpha)"), "V");
+            SetTip(tMove, L.T("Move layer", "Ebene verschieben"), "V");
+            SetTip(tSelect, L.T("Rectangle select", "Rechteckauswahl"), "S");
             SetTip(tMirror, L.T("Mirror drawing", "Spiegelzeichnen"), "M");
             SetTip(tFlipH, L.T("Flip horizontally", "Horizontal spiegeln"), "Shift+H");
             SetTip(tFlipV, L.T("Flip vertically", "Vertikal spiegeln"), "Shift+V");
@@ -1399,6 +1406,12 @@ namespace HabboBadgeCreator
                     case Keys.Y: doc.Redo(); RefreshDoc(); return true;
                     case Keys.L: ToggleLayers(); return true;
                     case Keys.C: if (shift) { CopyBadge(); return true; } break;
+                    case Keys.A:
+                        if (!typing) { doc.SelectAll(); RefreshDoc(); return true; }
+                        break;
+                    case Keys.D:
+                        if (!typing && doc.HasSelection) { doc.ClearSelection(); RefreshDoc(); return true; }
+                        break;
                     case Keys.Add:
                     case Keys.Oemplus: autoZoom = false; canvas.Zoom = canvas.Zoom + 1; UpdateToolUi(); return true;
                     case Keys.Subtract:
@@ -1415,6 +1428,26 @@ namespace HabboBadgeCreator
             }
 
             if (typing) return base.ProcessCmdKey(ref msg, keyData);
+
+            // alpha selection: Esc drops the marquee, Delete clears only the pixels inside it
+            if (k == Keys.Escape && doc.HasSelection)
+            {
+                doc.ClearSelection();
+                RefreshDoc();
+                return true;
+            }
+            if (k == Keys.Delete && doc.HasSelection)
+            {
+                if (doc.ActiveLocked)
+                {
+                    ShowToast(L.T("That layer is locked — unlock it in the layers panel",
+                        "Diese Ebene ist gesperrt – im Ebenen-Bereich entsperren"));
+                    return true;
+                }
+                doc.DeleteSelection();
+                RefreshDoc();
+                return true;
+            }
 
             if (shift)
             {
@@ -1437,6 +1470,7 @@ namespace HabboBadgeCreator
                 case Keys.G: SetTool(2); return true;
                 case Keys.I: SetTool(3); return true;
                 case Keys.V: SetTool(4); return true;
+                case Keys.S: SetTool(5); return true;
                 case Keys.M: ToggleMirror(); return true;
                 case Keys.C: CycleGuides(); return true;
                 case Keys.R: RotateCanvas(true); return true;

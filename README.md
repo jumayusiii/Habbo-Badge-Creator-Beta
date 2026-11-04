@@ -44,6 +44,7 @@ background service; it only talks to the local Discord desktop client when Rich 
 - **Flip the canvas** left/right or top/bottom in one undoable step (`Shift+H` / `Shift+V`)
 - **Beta: layers** — up to 5 layers, each with its own name, visibility, **opacity slider**, **lock** and **blend mode** (Normal, Multiply, Screen), plus add, duplicate, merge down, move up/down, delete and flatten (`Ctrl+L`); double-click a layer to rename it inline
 - **Alpha: move a layer** — pick the **Move** tool in the toolbar (`V`) and drag on the canvas: the active layer's pixels follow the cursor in a single undoable step, so a shape drawn two pixels off can be shifted without redrawing it
+- **Alpha: rectangle select** — the **Rectangle select** tool (`S`) sweeps out a marquee; drag inside it to carry those pixels elsewhere, `Delete` clears just the selected pixels, `Esc` or `Ctrl`+`D` deselects and `Ctrl`+`A` selects the whole canvas. While a selection exists the pencil, eraser and fill stay inside it. Both alpha tools carry a constant red dot and a red **ALPHA** chip in their tooltip
 - **Arrow keys** nudge the active layer by 1 px, `Shift`+arrow by 5 px
 - **Beta: rotate** the whole badge 90° clockwise (`R`) or anticlockwise (`Shift`+`R`)
 - **Beta: copy to clipboard** — send the finished 40 × 40 badge straight into Discord, Paint or any other app with the button next to **Export** (`Ctrl`+`Shift`+`C`)
@@ -134,6 +135,7 @@ and a dated entry per release, so a new build ships its own notes. Entries live 
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.4.5-beta.27 | 4 Nov 2026 | **Alpha:** the alpha tools are marked with a constant red dot and a red **ALPHA** tooltip chip. New **Rectangle select** (`S`) — drag out a marquee, drag inside it to move those pixels, `Delete` clears them, `Ctrl`+`A` / `Ctrl`+`D` select all / deselect, and painting stays inside the selection |
 | 1.4.5-beta.26 | 4 Nov 2026 | **Alpha:** drag the active layer with the new **Move** tool (`V`) — one undo step for the whole drag. **Export** now writes PNG, GIF, JPEG, ICO and SVG, each from the app's own writer |
 | 1.4.5-beta.25 | 3 Nov 2026 | **Beta:** GIF export — **Export** offers PNG and GIF, and `Ctrl`+`Shift`+`G` opens the dialog on GIF. The app writes a real 40 × 40 GIF89a itself, keeping the transparent background and quantizing only badges with more than 255 colours |
 | 1.4.5-beta.24 | 27 Oct 2026 | **Beta:** layout checked at 125 % and 150 % scaling — editor and sheets scale cleanly; fixed the German blend label, which was cut mid-word in the layer panel |

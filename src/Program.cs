@@ -773,6 +773,7 @@ namespace HabboBadgeCreator
             CheckMessageSheets();
             CheckGif();
             CheckExporters();
+            CheckSelection();
             CheckDiscord();
             CheckPortal();
 
@@ -1216,6 +1217,119 @@ namespace HabboBadgeCreator
             finally
             {
                 try { Directory.Delete(dir, true); } catch { }
+            }
+        }
+
+        /// <summary>The alpha rectangle selection, its paint clip and the move that leaves a hole.</summary>
+        static void CheckSelection()
+        {
+            PixelDoc d = new PixelDoc();
+            Check("a new document has no selection", !d.HasSelection);
+            d.SelectAll();
+            Check("select all covers the canvas",
+                d.HasSelection && d.Selection == new Rectangle(0, 0, PixelDoc.N, PixelDoc.N));
+            d.SetSelection(new Rectangle(-5, -5, 10, 10));
+            Check("a selection clamps to the canvas", d.Selection == new Rectangle(0, 0, 5, 5));
+            d.SetSelection(new Rectangle(60, 60, 10, 10));
+            Check("a selection outside the canvas is dropped", !d.HasSelection);
+
+            d.Set(1, 1, unchecked((int)0xFFFF0000));
+            d.Set(20, 20, unchecked((int)0xFFFF0000));
+            d.SetSelection(new Rectangle(10, 10, 20, 20));
+            d.BeginStroke();
+            d.SetPixels(3, 3, unchecked((int)0xFF00FF00), false);
+            d.SetPixels(15, 15, unchecked((int)0xFF00FF00), false);
+            d.EndStroke();
+            Check("painting is clipped to the selection",
+                d[3, 3] == 0 && d[15, 15] == unchecked((int)0xFF00FF00));
+
+            d.ClearSelection();
+            Check("clearing the selection keeps the pixels",
+                !d.HasSelection && d[15, 15] == unchecked((int)0xFF00FF00));
+
+            d.SetSelection(new Rectangle(10, 10, 20, 20));
+            d.DeleteSelection();
+            Check("delete clears only the selected pixels",
+                d[15, 15] == 0 && d[20, 20] == 0 && d[1, 1] == unchecked((int)0xFFFF0000));
+            d.Undo();
+            Check("delete selection is undoable", d[15, 15] == unchecked((int)0xFF00FF00));
+
+            d.Set(10, 10, unchecked((int)0xFF00FFFF));
+            d.Set(11, 10, unchecked((int)0xFF00FFFF));
+            d.Set(10, 11, unchecked((int)0xFF00FFFF));
+            d.Set(11, 11, unchecked((int)0xFF00FFFF));
+            d.SetSelection(new Rectangle(10, 10, 2, 2));
+            bool began = d.BeginSelectionMove();
+            d.MoveSelectionLive(3, 2);
+            d.EndSelectionMove();
+            Check("moving a selection carries its pixels and leaves a hole",
+                began && d[13, 12] == unchecked((int)0xFF00FFFF) && d[10, 10] == 0 &&
+                d.Selection == new Rectangle(13, 12, 2, 2));
+            d.Undo();
+            Check("the selection move is one undo step",
+                d[10, 10] == unchecked((int)0xFF00FFFF) && d[13, 12] == 0);
+
+            d.SetLayerLocked(0, true);
+            Check("a locked layer refuses a selection move", !d.BeginSelectionMove());
+            d.SetLayerLocked(0, false);
+
+            try
+            {
+                using (Form host = new Form())
+                {
+                    CanvasView cv = new CanvasView();
+                    cv.Tool = 5;
+                    cv.Zoom = 10;
+                    cv.Bounds = new Rectangle(0, 0, 440, 440);
+                    host.Controls.Add(cv);
+                    PixelDoc md = new PixelDoc();
+                    cv.Doc = md;
+                    using (Bitmap plain = new Bitmap(440, 440))
+                    {
+                        cv.DrawToBitmap(plain, new Rectangle(0, 0, 440, 440));
+                        md.SetSelection(new Rectangle(10, 10, 10, 10));
+                        using (Bitmap marked = new Bitmap(440, 440))
+                        {
+                            cv.DrawToBitmap(marked, new Rectangle(0, 0, 440, 440));
+                            int diff = 0;
+                            for (int y = 0; y < 440; y++)
+                                for (int x = 0; x < 440; x++)
+                                    if (plain.GetPixel(x, y).ToArgb() != marked.GetPixel(x, y).ToArgb()) diff++;
+                            Check("the selection marquee is drawn over the canvas", diff > 20);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Check("the selection marquee renders (" + ex.GetType().Name + ")", false);
+            }
+
+            try
+            {
+                using (Form host = new Form())
+                using (TipView tip = new TipView())
+                {
+                    host.ClientSize = new Size(400, 120);
+                    host.Controls.Add(tip);
+                    tip.ShowAt(new Rectangle(20, 20, 26, 26), "Move layer", "V", true);
+                    using (Bitmap b = new Bitmap(tip.Width, tip.Height))
+                    {
+                        tip.DrawToBitmap(b, new Rectangle(0, 0, b.Width, b.Height));
+                        int red = 0;
+                        for (int y = 0; y < b.Height; y++)
+                            for (int x = 0; x < b.Width; x++)
+                            {
+                                Color c = b.GetPixel(x, y);
+                                if (c.R > 180 && c.G < 110 && c.B < 110) red++;
+                            }
+                        Check("the alpha tooltip draws its red ALPHA chip", red > 30);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Check("the alpha tooltip renders (" + ex.GetType().Name + ")", false);
             }
         }
 

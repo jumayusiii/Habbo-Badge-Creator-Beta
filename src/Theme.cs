@@ -33,6 +33,12 @@ namespace HabboBadgeCreator
         public static Color Gold, GoldHi, GoldText, Hover, HoverSoft, Danger;
         public static Color Check1, Check2, Teal;
 
+        /// <summary>
+        /// Fixed red for the alpha markers. Deliberately not part of any palette: an alpha tool
+        /// stays marked in Dark, Light, Navy and Custom rather than borrowing the accent.
+        /// </summary>
+        public static readonly Color AlphaRed = Color.FromArgb(0xE5, 0x3B, 0x43);
+
         // Secondary tokens: quiet hues that used to be literals inside controls.
         public static Color StrokeHot, BtnText, IconIdle, ChipText, DotOff, TipBg;
         public static Color GridLine, FrameLine, HoverOutline, DashLine, ScrollBar;
@@ -741,6 +747,22 @@ namespace HabboBadgeCreator
                         g.FillPolygon(b, new PointF[] { new PointF(12f, 21.8f), new PointF(9.1f, 17.8f), new PointF(14.9f, 17.8f) });
                         g.FillPolygon(b, new PointF[] { new PointF(2.2f, 12f), new PointF(6.2f, 9.1f), new PointF(6.2f, 14.9f) });
                         g.FillPolygon(b, new PointF[] { new PointF(21.8f, 12f), new PointF(17.8f, 9.1f), new PointF(17.8f, 14.9f) });
+                        break;
+                    case "select":
+                        {
+                            // dashed marquee: the alpha rectangle-select tool
+                            using (Pen q = new Pen(c, Math.Max(1.2f, pw * 0.85f)))
+                            {
+                                q.DashStyle = DashStyle.Dash;
+                                q.DashPattern = new float[] { 2.4f, 2f };
+                                q.DashCap = System.Drawing.Drawing2D.DashCap.Flat;
+                                g.DrawRectangle(q, 3.4f, 4.6f, 17.2f, 14.8f);
+                            }
+                            g.FillRectangle(b, 3.4f, 4.6f, 2.2f, 2.2f);
+                            g.FillRectangle(b, 18.4f, 4.6f, 2.2f, 2.2f);
+                            g.FillRectangle(b, 3.4f, 17.2f, 2.2f, 2.2f);
+                            g.FillRectangle(b, 18.4f, 17.2f, 2.2f, 2.2f);
+                        }
                         break;
                     case "mirror":
                         using (Pen q = new Pen(c, 1.4f))
